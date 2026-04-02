@@ -16,8 +16,74 @@ use zk::{parse_pk_hex, parse_sk_hex};
 
 static SK: OnceCell<Scalar> = OnceCell::const_new();
 static PK: OnceCell<[u8; 32]> = OnceCell::const_new();
-/// Aynı peer_id için birden fazla eşzamanlı üretimi engelle.
 static IN_FLIGHT: OnceCell<Mutex<HashSet<u64>>> = OnceCell::const_new();
+
+// ── ML-KEM config (loaded from env) ──────────────────────────────────────────
+
+/// ML-KEM config shared across tasks.
+#[derive(Clone)]
+struct MlKemConfig {
+    /// Gateway: 64-byte seed (hex) for DecapsulationKey
+    dk_seed: Option<[u8; mlkem::SEED_LEN]>,
+    /// Gateway: TLS cert PEM
+    cert_pem: Option<String>,
+    /// Gateway: TLS key PEM
+    key_pem: Option<String>,
+    /// Gateway: WireGuard interface name (for `wg set`)
+    wg_iface: Option<String>,
+    /// Gateway: peer's WireGuard public key (base64, for `wg set ... preshared-key`)
+    wg_peer_pubkey: Option<String>,
+    /// Client: gateway ML-KEM encapsulation key (hex, 1184 bytes)
+    server_ek: Option<[u8; mlkem::EK_LEN]>,
+    /// Client: gateway TLS server address ("host:port")
+    server_addr: Option<String>,
+    /// Client: expected TLS cert fingerprint (hex SHA-256)
+    cert_fp: Option<String>,
+    /// TCP port for ML-KEM channel (default 51821)
+    port: u16,
+}
+
+impl MlKemConfig {
+    fn from_env() -> Self {
+        let dk_seed = std::env::var("MLKEM_DK_SEED").ok().and_then(|h| {
+            let b = hex::decode(h.trim()).ok()?;
+            b.try_into().ok()
+        });
+        let server_ek = std::env::var("MLKEM_SERVER_EK").ok().and_then(|h| {
+            let b = hex::decode(h.trim()).ok()?;
+            b.try_into().ok()
+        });
+        let port = std::env::var("MLKEM_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(mlkem_channel::DEFAULT_PORT);
+        MlKemConfig {
+            dk_seed,
+            cert_pem: std::env::var("MLKEM_CERT_PEM").ok(),
+            key_pem: std::env::var("MLKEM_KEY_PEM").ok(),
+            wg_iface: std::env::var("WG_IFACE").ok(),
+            wg_peer_pubkey: std::env::var("WG_PEER_PUBKEY").ok(),
+            server_ek,
+            server_addr: std::env::var("MLKEM_SERVER_ADDR").ok(),
+            cert_fp: std::env::var("MLKEM_CERT_FP").ok(),
+            port,
+        }
+    }
+
+    fn is_gateway_ready(&self) -> bool {
+        self.dk_seed.is_some()
+            && self.cert_pem.is_some()
+            && self.key_pem.is_some()
+            && self.wg_iface.is_some()
+            && self.wg_peer_pubkey.is_some()
+    }
+
+    fn is_client_ready(&self) -> bool {
+        self.server_ek.is_some()
+            && self.server_addr.is_some()
+            && self.cert_fp.is_some()
+    }
+}
 
 
 async fn inflight() -> &'static Mutex<HashSet<u64>> {
@@ -77,45 +143,74 @@ async fn main() -> Result<()> {
     let need_sk = mode == "client";
     let need_pk = mode == "gateway";
 
-    // Do not exit; just warn (so you can start and later inject keys)
     if need_sk && SK.get().is_none() {
-        eprintln!("[daemon] WARNING: WGZK_SK_HEX missing (client). Will retry proof only when SK set.");
+        eprintln!("[daemon] WARNING: WGZK_SK_HEX missing (client).");
     }
     if need_pk && PK.get().is_none() {
-        eprintln!("[daemon] WARNING: WGZK_PK_HEX missing (gateway). Verify will fail until set.");
+        eprintln!("[daemon] WARNING: WGZK_PK_HEX missing (gateway).");
     }
 
+    // Load ML-KEM config from env
+    let mlkem_cfg = MlKemConfig::from_env();
 
-    // CLIENT TASK (NEED_PROOF → SET_PROOF)
-    let client_task =
-        Some(tokio::spawn(async move {
-            loop {
-                match run_client_once().await {
-                    Ok(_) => {
-                        // run_client_once returns only on controlled shutdown; keep alive
-                        tokio::time::sleep(Duration::from_millis(500)).await;
-                    }
-                    Err(e) => {
-                        eprintln!("[client] loop error: {e:?} (retrying in 1s)");
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-                    }
-                };
+    // Optionally print generated cert info on gateway
+    if mode == "gateway" && mlkem_cfg.cert_pem.is_none() {
+        eprintln!("[mlkem] MLKEM_CERT_PEM not set — generating self-signed cert");
+        match mlkem_channel::generate_self_signed() {
+            Ok((cert, key, fp)) => {
+                eprintln!("[mlkem] cert fingerprint (share with clients): {fp}");
+                eprintln!("[mlkem] set MLKEM_CERT_PEM, MLKEM_KEY_PEM in .env to persist");
+                eprintln!("[mlkem] MLKEM_CERT_PEM={cert}");
+                let _ = (cert, key); // not stored — just printed
             }
-        })) ;
+            Err(e) => eprintln!("[mlkem] cert gen failed: {e}"),
+        }
+    }
 
-    // GATEWAY TASK (NEED_VERIFY → SET_VERIFY)
-    let server_task =
-        Some(tokio::spawn(async move {
-            loop {
-                match run_gateway_once().await {
-                    Ok(_) => tokio::time::sleep(Duration::from_millis(500)).await,
-                    Err(e) => {
-                        eprintln!("[gateway] loop error: {e:?} (retrying in 1s)");
-                        tokio::time::sleep(Duration::from_secs(1)).await;
-                    }
+    // CLIENT TASK (NEED_PROOF → ML-KEM encap + TLS send → SET_PROOF)
+    let mlkem_cfg_c = mlkem_cfg.clone();
+    let client_task = Some(tokio::spawn(async move {
+        loop {
+            match run_client_once(mlkem_cfg_c.clone()).await {
+                Ok(_) => tokio::time::sleep(Duration::from_millis(500)).await,
+                Err(e) => {
+                    eprintln!("[client] loop error: {e:?} (retrying in 1s)");
+                    tokio::time::sleep(Duration::from_secs(1)).await;
                 }
             }
-        }));
+        }
+    }));
+
+    // GATEWAY ML-KEM TLS LISTENER (background — decap CT + inject PSK)
+    let mlkem_cfg_gw = mlkem_cfg.clone();
+    let mlkem_listener_task = if mode == "gateway" && mlkem_cfg.is_gateway_ready() {
+        Some(tokio::spawn(async move {
+            loop {
+                if let Err(e) = run_mlkem_gateway_listener(&mlkem_cfg_gw).await {
+                    eprintln!("[mlkem-listener] error: {e:?} (retrying in 2s)");
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+                }
+            }
+        }))
+    } else {
+        if mode == "gateway" {
+            eprintln!("[mlkem] gateway ML-KEM disabled — set MLKEM_DK_SEED, MLKEM_CERT_PEM, MLKEM_KEY_PEM, WG_IFACE, WG_PEER_PUBKEY");
+        }
+        None
+    };
+
+    // GATEWAY ZK TASK (NEED_VERIFY → SET_VERIFY)
+    let server_task = Some(tokio::spawn(async move {
+        loop {
+            match run_gateway_once().await {
+                Ok(_) => tokio::time::sleep(Duration::from_millis(500)).await,
+                Err(e) => {
+                    eprintln!("[gateway] loop error: {e:?} (retrying in 1s)");
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                }
+            }
+        }
+    }));
 
 
     let client_join = async {
@@ -134,9 +229,18 @@ async fn main() -> Result<()> {
         }
     };
 
+    let mlkem_join = async {
+        if let Some(t) = mlkem_listener_task {
+            let _ = t.await;
+        } else {
+            pending::<()>().await;
+        }
+    };
+
     tokio::select! {
         _ = client_join => {},
         _ = server_join => {},
+        _ = mlkem_join => {},
         _ = tokio::signal::ctrl_c() => { eprintln!("[daemon] shutdown"); }
     }
 
@@ -190,7 +294,35 @@ async fn run_gateway_once() -> Result<()> {
     }
 }
 
-async fn run_client_once()  -> Result<()>{
+async fn run_mlkem_gateway_listener(cfg: &MlKemConfig) -> Result<()> {
+    let seed = cfg.dk_seed.as_ref().unwrap();
+    let cert_pem = cfg.cert_pem.as_deref().unwrap();
+    let key_pem = cfg.key_pem.as_deref().unwrap();
+    let wg_iface = cfg.wg_iface.as_deref().unwrap();
+    let wg_peer_pubkey = cfg.wg_peer_pubkey.as_deref().unwrap();
+
+    let acceptor = mlkem_channel::make_acceptor(cert_pem, key_pem)?;
+    let listener = mlkem_channel::bind(cfg.port).await?;
+
+    loop {
+        match mlkem_channel::recv_ciphertext(&acceptor, &listener).await {
+            Ok((token, _nonce, ct)) => {
+                eprintln!("[mlkem-gw] received CT token={token}");
+                let ss = mlkem::decap(seed, &ct);
+                let psk = mlkem::derive_psk(&ss);
+                match mlkem::inject_psk(wg_iface, wg_peer_pubkey, &psk) {
+                    Ok(()) => eprintln!("[mlkem-gw] PSK injected for token={token}"),
+                    Err(e) => eprintln!("[mlkem-gw] inject_psk error: {e:?}"),
+                }
+            }
+            Err(e) => {
+                eprintln!("[mlkem-gw] recv_ciphertext error: {e:?}");
+            }
+        }
+    }
+}
+
+async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
     eprintln!("[daemon] Connecting to genl");
 
     // ESKİ: expect / unwrap zinciri
@@ -245,6 +377,35 @@ async fn run_client_once()  -> Result<()>{
                         let (r, s) = zk::prove(sk, &session_nonce);
                         eprintln!("[client] proving r={} s={} nonce={}",
                             hex::encode(r), hex::encode(s), hex::encode(session_nonce));
+
+                        // ML-KEM hybrid: encap + send CT to gateway over TLS
+                        if mlkem_cfg.is_client_ready() {
+                            let server_ek = mlkem_cfg.server_ek.as_ref().unwrap();
+                            let server_addr = mlkem_cfg.server_addr.as_deref().unwrap();
+                            let cert_fp = mlkem_cfg.cert_fp.as_deref().unwrap();
+                            match mlkem::encap(server_ek) {
+                                Ok((ct, ss)) => {
+                                    let psk = mlkem::derive_psk(&ss);
+                                    // Inject PSK locally (for gateway-side symmetry, client also injects its half)
+                                    // Note: client doesn't call inject_psk — gateway does; client just sends CT.
+                                    let token_u32 = ev.token.unwrap_or(0);
+                                    match mlkem_channel::make_connector(cert_fp) {
+                                        Ok(connector) => {
+                                            if let Err(e) = mlkem_channel::send_ciphertext(
+                                                &connector, server_addr, token_u32, &session_nonce, &ct,
+                                            ).await {
+                                                eprintln!("[client] ML-KEM send error: {e:?}");
+                                            } else {
+                                                eprintln!("[client] ML-KEM CT sent token={token_u32}");
+                                                let _ = psk; // gateway will derive PSK from CT
+                                            }
+                                        }
+                                        Err(e) => eprintln!("[client] make_connector error: {e:?}"),
+                                    }
+                                }
+                                Err(e) => eprintln!("[client] ML-KEM encap error: {e:?}"),
+                            }
+                        }
 
                         if let Err(e) = send_set_proof(&mut sock, family_id, ev.peer_id, ev.token, &r, &s, ev.ifindex, &session_nonce).await {
                             eprintln!("[daemon] send_set_proof error: {e:?}");
