@@ -6,6 +6,8 @@ use tokio::sync::{Mutex, OnceCell};
 
 mod netlink;
 mod zk;
+mod mlkem;
+mod mlkem_channel;
 use dotenvy::dotenv;
 
 use curve25519_dalek::scalar::Scalar;
