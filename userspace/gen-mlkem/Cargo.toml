@@ -1,0 +1,12 @@
+[package]
+name = "gen-mlkem"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ml-kem    = { version = "0.3.0-rc.1", features = ["getrandom"] }
+hybrid-array = "0.4"
+sha2      = "0.10.9"
+hex       = "0.4.3"
+rcgen     = "0.13"
+anyhow    = "1.0.99"

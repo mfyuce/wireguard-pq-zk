@@ -8,7 +8,10 @@ KEYS="/vagrant/vagrant/keys"
 
 [ -f "$KEYS/private_left" ] || { echo "ERROR: keys not found. Run: bash vagrant/keygen.sh"; exit 1; }
 [ -f "$KEYS/zk.env" ]       || { echo "ERROR: zk.env not found"; exit 1; }
+[ -f "$KEYS/mlkem.env" ]    || { echo "ERROR: mlkem.env not found. Run: bash vagrant/keygen.sh"; exit 1; }
 source "$KEYS/zk.env"
+MLKEM_EK=$(grep     "^MLKEM_EK="      "$KEYS/mlkem.env" | cut -d= -f2)
+MLKEM_CERT_FP=$(grep "^MLKEM_CERT_FP=" "$KEYS/mlkem.env" | cut -d= -f2)
 
 install -m 755 /vagrant/userspace/wg-zk-daemon/target/release/wg-zk-daemon /usr/local/bin/wg-zk-daemon
 
@@ -36,10 +39,16 @@ sysctl -w net.ipv4.conf.wg1l.rp_filter=0 >/dev/null || true
 sysctl -w net.ipv4.conf.dum0l.rp_filter=0 >/dev/null || true
 
 # ── Daemon ────────────────────────────────────────────────────────────────────
+WG_PEER_PUBKEY="$(cat $KEYS/public_right)"
 cat > /etc/wgzk.env <<EOF
 WGZK_MODE=client
 WGZK_SK_HEX=${WGZK_SK_HEX}
 WGZK_PK_HEX=${WGZK_PK_HEX}
+MLKEM_SERVER_EK=${MLKEM_EK}
+MLKEM_SERVER_ADDR=${PEER_IP}:51821
+MLKEM_CERT_FP=${MLKEM_CERT_FP}
+WG_IFACE=wg1l
+WG_PEER_PUBKEY=${WG_PEER_PUBKEY}
 EOF
 cat > /etc/systemd/system/wgzk.service <<'EOF'
 [Unit]

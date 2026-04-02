@@ -119,6 +119,10 @@ fn decide_mode() -> &'static str {
 async fn main() -> Result<()> {
 
     eprintln!( "[daemon] Starting" );
+    // Install rustls ring provider (must be called before any TLS operation)
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .expect("rustls ring provider already installed");
     // Load variables from .env file (if present)
     dotenv().ok();
     eprintln!( "[daemon] Env loaded" );
@@ -397,7 +401,16 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                                                 eprintln!("[client] ML-KEM send error: {e:?}");
                                             } else {
                                                 eprintln!("[client] ML-KEM CT sent token={token_u32}");
-                                                let _ = psk; // gateway will derive PSK from CT
+                                                // Both sides must inject the same PSK
+                                                if let (Some(iface), Some(peer_pubkey)) = (
+                                                    mlkem_cfg.wg_iface.as_deref(),
+                                                    mlkem_cfg.wg_peer_pubkey.as_deref(),
+                                                ) {
+                                                    match mlkem::inject_psk(iface, peer_pubkey, &psk) {
+                                                        Ok(()) => eprintln!("[client] PSK injected locally"),
+                                                        Err(e) => eprintln!("[client] inject_psk error: {e:?}"),
+                                                    }
+                                                }
                                             }
                                         }
                                         Err(e) => eprintln!("[client] make_connector error: {e:?}"),
