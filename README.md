@@ -1,13 +1,26 @@
 # WireGuard ZK Handshake
 
-A modified Linux 6.8 WireGuard kernel module that adds **Schnorr zero-knowledge proof authentication** to the WireGuard handshake. A peer must prove knowledge of a secret key — without revealing it — before the gateway accepts the handshake. A small Rust userspace daemon handles proof generation and verification via Generic Netlink.
+A modified Linux 6.8 WireGuard kernel module that adds **Schnorr zero-knowledge proof authentication** and **ML-KEM-768 post-quantum confidentiality** to the WireGuard handshake. A peer must prove knowledge of a secret key — without revealing it — before the gateway accepts the handshake. A small Rust userspace daemon handles proof generation, verification, and the out-of-band PQ key exchange via Generic Netlink and TLS.
 
 This is the reference implementation for the paper:
-> *Privacy-Preserving VPN Handshakes with Schnorr-Based Zero-Knowledge Proofs*, Computers & Security 2026.
+> *Privacy-Preserving and Post-Quantum VPN Handshakes with Schnorr-Based Zero-Knowledge Proofs*, Computers & Security 2026.
 
 ---
 
 ## How It Works
+
+### Hybrid Design
+
+The system provides two independent security layers:
+
+| Layer | Scheme | Purpose | Security assumption |
+|-------|--------|---------|---------------------|
+| ZK Auth | Schnorr++ over Ristretto255 | Unlinkable client identity | Classical DLOG |
+| PQ Confidentiality | ML-KEM-768 (FIPS 203) | PQ-safe session key | Module-LWE |
+
+The ML-KEM shared secret is derived out-of-band (separate TLS channel) and injected as a WireGuard PSK, mixing into the Noise transcript via `K_session = BLAKE2s(K_DH ‖ psk ‖ transcript)`. The tunnel is secure if either x25519 **or** ML-KEM-768 is unbroken.
+
+---
 
 ### ZK Scheme (Schnorr++)
 
@@ -22,20 +35,30 @@ The scheme is a hardened Schnorr proof over **Ristretto255** (prime-order group,
 
 ### Protocol Flow
 
+Three concurrent channels:
+
 ```
-CLIENT                      KERNEL                       GATEWAY
-  |                            |                             |
-  | ping 10.20.10.10           |                             |
-  |---packet queued----------->|                             |
-  |                            |--NEED_PROOF (genl mcast)--->|
-  |                            |<---(client daemon)          |
-  |<--SET_PROOF (peer_id, r,s)-|                             |
-  |                            |--ZK initiation (212 bytes)->|
-  |                            |                             |--NEED_VERIFY (genl mcast)
-  |                            |                             |<--SET_VERIFY (ok=1)
-  |                            |<--handshake response--------|
-  |                            |--session established------->|
-  |<---------ICMP reply--------|<----------------------------|
+CLIENT                      KERNEL/WireGuard              GATEWAY
+  │                               │                           │
+  │  [Ch 1 – Netlink/ZK]          │                           │
+  │  ping 10.20.10.10             │                           │
+  │──packet queued───────────────>│                           │
+  │                               │──NEED_PROOF (genl)──>daemon│
+  │<──SET_PROOF (r,s,nonce)───────│                           │
+  │                               │──ZK initiation (0xA1)───>│
+  │                               │                    daemon<──NEED_VERIFY
+  │                               │                    daemon──>SET_VERIFY(ok)
+  │                               │<──Noise response──────────│
+  │                               │                           │
+  │  [Ch 2 – TLS/ML-KEM]          │                           │
+  │──TLS connect :51821──────────────────────────────────────>│
+  │──ML-KEM CT (1088B)───────────────────────────────────────>│
+  │  encap → ss → psk             │          decap → ss → psk │
+  │  wg set psk locally           │          wg set psk locally│
+  │                               │                           │
+  │  [Ch 3 – WireGuard data]      │                           │
+  │<──────────────────── session established ─────────────────│
+  │<──────────────────── ICMP reply ──────────────────────────│
 ```
 
 ### Extended Handshake Packet
@@ -84,11 +107,13 @@ wireguard-6.8/          Modified kernel module source
   zk_pending.c/h          Pending handshake table (sender_index → peer)
 
 userspace/
-  wg-zk-daemon/           Rust daemon (proof generation + verification)
-    src/main.rs             Client + gateway event loops
+  wg-zk-daemon/           Rust daemon (proof generation + verification + ML-KEM exchange)
+    src/main.rs             Client + gateway event loops (ZK + ML-KEM tasks)
     src/netlink.rs          neli 0.7 async helpers
     src/zk.rs               Schnorr++ prove/verify (Ristretto255, hedged nonces)
+    src/mlkem.rs            ML-KEM-768 encap/decap, PSK derivation, PSK injection
   gen-pk/                 Schnorr++ key-pair generator (Ristretto255)
+  gen-mlkem/              ML-KEM-768 keypair + TLS cert generator
 
 run/
   wg_vm_left.sh           VM setup script — LEFT/client side
@@ -180,10 +205,11 @@ The easiest way to try the demo is with Vagrant. It spins up two VMs, loads the 
 **Pre-requisites** (run on host, once):
 
 ```bash
-# 1. Build the kernel module and daemon
+# 1. Build the kernel module and all userspace tools
 cd wireguard-6.8 && make -C /lib/modules/6.8.0-59-generic/build M=$(pwd) modules
 cd userspace/wg-zk-daemon && cargo build --release
 cd userspace/gen-pk && cargo build --release
+cd userspace/gen-mlkem && cargo build --release   # ML-KEM key + TLS cert generator
 
 # 2. Build the base Vagrant box (installs kernel 6.8.0-59-generic — takes ~5 min)
 cd vagrant && bash build-base.sh
@@ -360,7 +386,15 @@ PING 10.20.10.10 (10.20.10.10) from 10.10.10.10 : 56(84) bytes of data.
 |----------------------|------|-------------|
 | `WGZK_MODE` | both | `client` (generates proofs) or `gateway` (verifies proofs) |
 | `WGZK_SK_HEX` | client | 32-byte Schnorr secret key, hex-encoded |
-| `WGZK_PK_HEX` | gateway | 32-byte Schnorr public key (`X = sk·G`), hex-encoded |
+| `WGZK_PK_HEX` | both | 32-byte Schnorr public key (`X = sk·G`), hex-encoded |
+| `WG_IFACE` | both | WireGuard interface name (e.g. `wg1l`, `wg1r`) for PSK injection |
+| `WG_PEER_PUBKEY` | both | WireGuard peer public key (base64), used by PSK injection |
+| `MLKEM_DK_SEED` | gateway | 64-byte ML-KEM-768 decapsulation key seed, hex-encoded |
+| `MLKEM_CERT_PEM` | gateway | Self-signed TLS certificate PEM (for ML-KEM channel) |
+| `MLKEM_KEY_PEM` | gateway | TLS private key PEM |
+| `MLKEM_SERVER_EK` | client | Gateway ML-KEM-768 encapsulation key, hex-encoded |
+| `MLKEM_SERVER_ADDR` | client | Gateway TLS address for ML-KEM channel (e.g. `192.168.100.1:51821`) |
+| `MLKEM_CERT_FP` | client | SHA-256 fingerprint of gateway TLS cert (hex); prevents MITM |
 
 ---
 
