@@ -26,3 +26,4 @@ tokio-rustls = "0.26"
 rustls = { version = "0.23", features = ["ring"] }
 rcgen = "0.13"
 rustls-pemfile = "2"
+base64 = "0.22"

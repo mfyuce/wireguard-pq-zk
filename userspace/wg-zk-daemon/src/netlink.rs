@@ -199,7 +199,12 @@ pub async fn resolve_family_and_groups(
 
                     if atype == CtrlAttr::from(u16::from(CtrlAttr::FamilyId)) {
                         let b = attr.payload();
-                        let bytes: [u8; 2] = b.as_ref().try_into().unwrap();
+                        let slice = b.as_ref();
+                        if slice.len() < 2 {
+                            eprintln!("[wgzk] CTRL_ATTR_FAMILY_ID payload too short: {} bytes", slice.len());
+                            continue;
+                        }
+                        let bytes: [u8; 2] = [slice[0], slice[1]];
                         family_id = Some(u16::from_le_bytes(bytes));
                     } else if atype == CtrlAttr::from(u16::from(CtrlAttr::McastGroups)) {
                         // The payload is a nested list of "group" attributes, each of which
@@ -222,8 +227,9 @@ pub async fn resolve_family_and_groups(
                                     name = Some(String::from_utf8(v)?);
                                 } else if t == u16::from(CtrlAttrMcastGrp::Id) {
                                     if p.len() >= 4 {
-                                        let bytes: [u8; 4] = p[0..4].try_into().unwrap();
-                                        id = Some(u32::from_le_bytes(bytes));
+                                        if let Ok(bytes) = <[u8; 4]>::try_from(&p[..4]) {
+                                            id = Some(u32::from_le_bytes(bytes));
+                                        }
                                     }
                                 }
                             }
@@ -287,7 +293,8 @@ pub async fn send_set_proof(
         .build()?;
 
     sock.send(&req).await?;
-    // ACK beklemeden gönder—kernel başarısız olursa bir sonraki NEED_PROOF tekrar tetiklenecek.
+    // Fire-and-forget: don't wait for ACK. If the kernel drops this SET_PROOF,
+    // it will re-emit NEED_PROOF on the next handshake attempt.
     Ok(())
 }
 /* ---------------- server: NEED_VERIFY event ---------------- */
@@ -307,7 +314,7 @@ pub fn try_parse_need_verify(genl: &Genlmsghdr<u8, u16>) -> Option<NeedVerifyEve
     let mut r: Option<[u8; 32]> = None;
     let mut s: Option<[u8; 32]> = None;
     let mut token: Option<u32> = None;
-    let mut session_nonce = [0u8; 32];
+    let mut session_nonce: Option<[u8; 32]> = None;
     for a in genl.attrs().iter() {
         match WgzkAttr::from(*a.nla_type().nla_type()) {
             WgzkAttr::Ifindex => {
@@ -341,12 +348,21 @@ pub fn try_parse_need_verify(genl: &Genlmsghdr<u8, u16>) -> Option<NeedVerifyEve
             WgzkAttr::SessionNonce => {
                 let p = a.payload();
                 if p.as_ref().len() == 32 {
-                    session_nonce.copy_from_slice(p.as_ref());
+                    let mut arr = [0u8; 32];
+                    arr.copy_from_slice(p.as_ref());
+                    session_nonce = Some(arr);
                 }
             }
             _ => {}
         }
     }
+    let session_nonce = match session_nonce {
+        Some(n) => n,
+        None => {
+            eprintln!("[wgzk] NEED_VERIFY missing session_nonce attribute; dropping");
+            return None;
+        }
+    };
     Some(NeedVerifyEvent {
         ifindex: ifindex?,
         sender_index: sender_index?,

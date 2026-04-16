@@ -62,9 +62,10 @@ pub fn derive_psk(shared_secret: &[u8; 32]) -> [u8; 32] {
 /// Inject PSK into WireGuard peer via `wg set`.
 /// peer_wg_pubkey: base64-encoded WireGuard Curve25519 public key.
 pub fn inject_psk(ifname: &str, peer_wg_pubkey: &str, psk: &[u8; 32]) -> anyhow::Result<()> {
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
     use std::io::Write;
     use std::process::{Command, Stdio};
-    let psk_b64 = base64_std(psk);
+    let psk_b64 = STANDARD.encode(psk);
     let mut child = Command::new("wg")
         .args(["set", ifname, "peer", peer_wg_pubkey, "preshared-key", "/dev/stdin"])
         .stdin(Stdio::piped())
@@ -77,20 +78,6 @@ pub fn inject_psk(ifname: &str, peer_wg_pubkey: &str, psk: &[u8; 32]) -> anyhow:
     Ok(())
 }
 
-fn base64_std(bytes: &[u8]) -> String {
-    const C: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    let mut out = String::new();
-    for chunk in bytes.chunks(3) {
-        let b0 = chunk[0] as usize;
-        let b1 = if chunk.len() > 1 { chunk[1] as usize } else { 0 };
-        let b2 = if chunk.len() > 2 { chunk[2] as usize } else { 0 };
-        out.push(C[b0 >> 2] as char);
-        out.push(C[((b0 & 3) << 4) | (b1 >> 4)] as char);
-        out.push(if chunk.len() > 1 { C[((b1 & 0xf) << 2) | (b2 >> 6)] as char } else { '=' });
-        out.push(if chunk.len() > 2 { C[b2 & 0x3f] as char } else { '=' });
-    }
-    out
-}
 
 #[cfg(test)]
 mod tests {

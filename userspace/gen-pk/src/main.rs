@@ -7,7 +7,7 @@ use std::error::Error;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut seed = [0u8; 32];
-    fill(&mut seed)?;
+    fill(&mut seed).map_err(|e| format!("getrandom: {e}"))?;
 
     // Schnorr++ uses Ristretto255 (prime-order group, no cofactor issues)
     let sk: Scalar = Scalar::from_bytes_mod_order(seed);

@@ -1,7 +1,7 @@
 use futures::future::pending;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use tokio::time::{sleep, Duration};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use tokio::sync::{Mutex, OnceCell};
 
 mod netlink;
@@ -17,6 +17,15 @@ use zk::{parse_pk_hex, parse_sk_hex};
 static SK: OnceCell<Scalar> = OnceCell::const_new();
 static PK: OnceCell<[u8; 32]> = OnceCell::const_new();
 static IN_FLIGHT: OnceCell<Mutex<HashSet<u64>>> = OnceCell::const_new();
+
+/// Gateway-side pending ML-KEM shared secrets, keyed by the session nonce sent
+/// by the client. Inserted by the ML-KEM TLS listener and consumed by the ZK
+/// NEED_VERIFY handler, binding ZK proof ↔ ML-KEM CT via the matching nonce.
+static MLKEM_PENDING: OnceCell<Mutex<HashMap<[u8; 32], ([u8; 32], u32)>>> = OnceCell::const_new();
+
+async fn mlkem_pending() -> &'static Mutex<HashMap<[u8; 32], ([u8; 32], u32)>> {
+    MLKEM_PENDING.get_or_init(|| async { Mutex::new(HashMap::new()) }).await
+}
 
 // ── ML-KEM config (loaded from env) ──────────────────────────────────────────
 
@@ -93,7 +102,7 @@ async fn inflight() -> &'static Mutex<HashSet<u64>> {
 async fn load_keys() -> Result<()> {
     if let Ok(sk_hex) = std::env::var("WGZK_SK_HEX") {
         SK.get_or_try_init(|| async move {
-            // DİKKAT: sadece parse_*’ı döndür, Ok(...) yapma
+            // NOTE: return parse_* result directly — do not wrap in Ok(...)
             parse_sk_hex(&sk_hex)
         }).await?;
     }
@@ -110,7 +119,7 @@ fn decide_mode() -> &'static str {
     if let Ok(m) = std::env::var("WGZK_MODE") {
         return if m.eq_ignore_ascii_case("client") { "client" } else { "gateway" };
     }
-    // default to client if nothing tells us otherwise
+    eprintln!("[wgzk] WGZK_MODE not set; defaulting to 'client'. Set WGZK_MODE=gateway on the gateway daemon.");
     "client"
 }
 
@@ -204,9 +213,10 @@ async fn main() -> Result<()> {
     };
 
     // GATEWAY ZK TASK (NEED_VERIFY → SET_VERIFY)
+    let mlkem_enabled = mode == "gateway" && mlkem_cfg.is_gateway_ready();
     let server_task = Some(tokio::spawn(async move {
         loop {
-            match run_gateway_once().await {
+            match run_gateway_once(mlkem_enabled).await {
                 Ok(_) => tokio::time::sleep(Duration::from_millis(500)).await,
                 Err(e) => {
                     eprintln!("[gateway] loop error: {e:?} (retrying in 1s)");
@@ -259,8 +269,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn run_gateway_once() -> Result<()> {
-    use anyhow::anyhow;
+async fn run_gateway_once(mlkem_enabled: bool) -> Result<()> {
     let mut sock = connect_genl().await?;
     let resolved = resolve_family_and_groups(&mut sock, "wgzk").await?;
     let events_gid = *resolved
@@ -289,6 +298,25 @@ async fn run_gateway_once() -> Result<()> {
                 hex::encode(ev.r), hex::encode(ev.s), hex::encode(ev.session_nonce));
             let ok = zk::verify(pk, &ev.r, &ev.s, &ev.session_nonce);
             eprintln!("[gateway] verify result={ok} idx={}", ev.sender_index);
+
+            // Bind ZK proof to matching ML-KEM CT (if ML-KEM is enabled).
+            // The client uses the same session nonce for both; the ML-KEM listener
+            // inserts (nonce → ss) before the ZK proof arrives. Absence of a match
+            // means the ML-KEM CT never arrived (or carried a different nonce).
+            if mlkem_enabled {
+                let bound = mlkem_pending().await.lock().await.remove(&ev.session_nonce);
+                match bound {
+                    Some((_ss, token)) => eprintln!(
+                        "[gateway] ZK↔ML-KEM bound nonce={} token={}",
+                        hex::encode(ev.session_nonce), token
+                    ),
+                    None => eprintln!(
+                        "[gateway] WARNING: ZK proof without matching ML-KEM CT for nonce={}",
+                        hex::encode(ev.session_nonce)
+                    ),
+                }
+            }
+
             if let Err(e) = send_set_verify(&mut sock, family_id, ev.sender_index, if ok { 1 } else { 0 }).await {
                 eprintln!("[gateway] SET_VERIFY send error: {e:?}");
             } else {
@@ -299,20 +327,27 @@ async fn run_gateway_once() -> Result<()> {
 }
 
 async fn run_mlkem_gateway_listener(cfg: &MlKemConfig) -> Result<()> {
-    let seed = cfg.dk_seed.as_ref().unwrap();
-    let cert_pem = cfg.cert_pem.as_deref().unwrap();
-    let key_pem = cfg.key_pem.as_deref().unwrap();
-    let wg_iface = cfg.wg_iface.as_deref().unwrap();
-    let wg_peer_pubkey = cfg.wg_peer_pubkey.as_deref().unwrap();
+    let seed = cfg.dk_seed.as_ref().ok_or_else(|| anyhow!("ML-KEM gateway: WGZK_MLKEM_DK_SEED missing"))?;
+    let cert_pem = cfg.cert_pem.as_deref().ok_or_else(|| anyhow!("ML-KEM gateway: WGZK_MLKEM_CERT_PEM missing"))?;
+    let key_pem = cfg.key_pem.as_deref().ok_or_else(|| anyhow!("ML-KEM gateway: WGZK_MLKEM_KEY_PEM missing"))?;
+    let wg_iface = cfg.wg_iface.as_deref().ok_or_else(|| anyhow!("ML-KEM gateway: WGZK_WG_IFACE missing"))?;
+    let wg_peer_pubkey = cfg.wg_peer_pubkey.as_deref().ok_or_else(|| anyhow!("ML-KEM gateway: WGZK_WG_PEER_PUBKEY missing"))?;
 
     let acceptor = mlkem_channel::make_acceptor(cert_pem, key_pem)?;
     let listener = mlkem_channel::bind(cfg.port).await?;
 
+    let mut backoff_ms: u64 = 50;
+    const BACKOFF_MAX_MS: u64 = 5_000;
     loop {
         match mlkem_channel::recv_ciphertext(&acceptor, &listener).await {
-            Ok((token, _nonce, ct)) => {
-                eprintln!("[mlkem-gw] received CT token={token}");
+            Ok((token, nonce, ct)) => {
+                backoff_ms = 50;
+                eprintln!("[mlkem-gw] received CT token={token} nonce={}", hex::encode(nonce));
                 let ss = mlkem::decap(seed, &ct);
+                // Store pending binding keyed by the client-provided session nonce.
+                // The ZK NEED_VERIFY handler looks it up by the matching nonce from
+                // the ZK proof — this ties ZK ↔ ML-KEM for the same session.
+                mlkem_pending().await.lock().await.insert(nonce, (ss, token));
                 let psk = mlkem::derive_psk(&ss);
                 match mlkem::inject_psk(wg_iface, wg_peer_pubkey, &psk) {
                     Ok(()) => eprintln!("[mlkem-gw] PSK injected for token={token}"),
@@ -320,7 +355,9 @@ async fn run_mlkem_gateway_listener(cfg: &MlKemConfig) -> Result<()> {
                 }
             }
             Err(e) => {
-                eprintln!("[mlkem-gw] recv_ciphertext error: {e:?}");
+                eprintln!("[mlkem-gw] recv_ciphertext error: {e:?} (backoff {backoff_ms}ms)");
+                tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                backoff_ms = (backoff_ms * 2).min(BACKOFF_MAX_MS);
             }
         }
     }
@@ -329,8 +366,7 @@ async fn run_mlkem_gateway_listener(cfg: &MlKemConfig) -> Result<()> {
 async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
     eprintln!("[daemon] Connecting to genl");
 
-    // ESKİ: expect / unwrap zinciri
-    // YENİ: hepsi `?` ve kontrollü hata
+    // All genl operations use `?` with proper error propagation — no expect/unwrap.
     let mut sock = connect_genl().await?;
 
     eprintln!("[daemon] Connecting to wgzk");
@@ -358,13 +394,18 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                 eprintln!("[daemon] Recv OK");
                 if *genl.cmd() == WgzkCmd::NeedProof as u8 {
                     if let Some(ev) = try_parse_need_proof(&genl) {
-                        // Use per‑initiation token for dedup (best against races)
-                        let token = ev.token.unwrap_or(0) as u64;
-                        let mut inflight1 = inflight().await.lock().await;
-                        if !inflight1.insert(token) {
-                            continue; // already in-flight
+                        // Per-initiation token dedup (best against races). Skip dedup
+                        // if kernel omitted the token — better to handle a duplicate
+                        // than to drop every tokenless initiation after the first.
+                        if let Some(t) = ev.token {
+                            let mut inflight1 = inflight().await.lock().await;
+                            if !inflight1.insert(t as u64) {
+                                continue; // already in-flight
+                            }
+                            drop(inflight1);
+                        } else {
+                            eprintln!("[daemon] NEED_PROOF without token; dedup skipped");
                         }
-                        drop(inflight1);
 
                         eprintln!(
                             "[daemon] NEED_PROOF ifindex={} peer_id={} token={:?}",
@@ -383,10 +424,11 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                             hex::encode(r), hex::encode(s), hex::encode(session_nonce));
 
                         // ML-KEM hybrid: encap + send CT to gateway over TLS
-                        if mlkem_cfg.is_client_ready() {
-                            let server_ek = mlkem_cfg.server_ek.as_ref().unwrap();
-                            let server_addr = mlkem_cfg.server_addr.as_deref().unwrap();
-                            let cert_fp = mlkem_cfg.cert_fp.as_deref().unwrap();
+                        if let (Some(server_ek), Some(server_addr), Some(cert_fp)) = (
+                            mlkem_cfg.server_ek.as_ref(),
+                            mlkem_cfg.server_addr.as_deref(),
+                            mlkem_cfg.cert_fp.as_deref(),
+                        ) {
                             match mlkem::encap(server_ek) {
                                 Ok((ct, ss)) => {
                                     let psk = mlkem::derive_psk(&ss);
@@ -429,7 +471,9 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                             );
                         }
 
-                        inflight().await.lock().await.remove(&token);
+                        if let Some(t) = ev.token {
+                            inflight().await.lock().await.remove(&(t as u64));
+                        }
                     }
                 }
             }
