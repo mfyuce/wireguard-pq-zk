@@ -59,11 +59,20 @@ def main():
     mlkem = [r["mlkem_us"] for r in rows]
     psk = [r["psk_us"] for r in rows]
     tail = [r["tail_us"] for r in rows]
+    encap = [r.get("encap_us", 0) for r in rows]
+    tls = [r.get("tls_us", 0) for r in rows]
+    write = [r.get("write_us", 0) for r in rows]
+    warm_total = [r["total_us"] - r.get("tls_us", 0) for r in rows]
 
     print(f"variant={variant} n_trials={len(rows)}")
     print(f"  total (need→set):     {fmt(stats(total))}")
     print(f"  zk (proof gen):       {fmt(stats(zk))}")
     print(f"  mlkem (encap + TLS):  {fmt(stats(mlkem))}")
+    if any(tls):
+        print(f"    encap (ML-KEM enc): {fmt(stats(encap))}")
+        print(f"    tls (TCP+TLS setup):{fmt(stats(tls))}")
+        print(f"    write (msg send):   {fmt(stats(write))}")
+        print(f"  warm-equiv (total - tls): {fmt(stats(warm_total))}")
     print(f"  psk (wg set inject):  {fmt(stats(psk))}")
     print(f"  tail (genl SET_PROOF):{fmt(stats(tail))}")
     if cpu:

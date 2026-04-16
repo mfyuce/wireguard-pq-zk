@@ -445,6 +445,8 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                         eprintln!("[client] proving r={} s={} nonce={}",
                             hex::encode(r), hex::encode(s), hex::encode(session_nonce));
 
+                        let mut t_encap = t_zk;
+                        let mut t_tls = t_zk;
                         let mut t_mlkem = t_zk;
                         let mut t_psk = t_zk;
 
@@ -456,30 +458,34 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                         ) {
                             match mlkem::encap(server_ek) {
                                 Ok((ct, ss)) => {
+                                    t_encap = std::time::Instant::now();
                                     let psk = mlkem::derive_psk(&ss);
-                                    // Inject PSK locally (for gateway-side symmetry, client also injects its half)
-                                    // Note: client doesn't call inject_psk — gateway does; client just sends CT.
                                     let token_u32 = ev.token.unwrap_or(0);
                                     match mlkem_channel::make_connector(cert_fp) {
                                         Ok(connector) => {
-                                            if let Err(e) = mlkem_channel::send_ciphertext(
-                                                &connector, server_addr, token_u32, &session_nonce, &ct,
-                                            ).await {
-                                                eprintln!("[client] ML-KEM send error: {e:?}");
-                                            } else {
-                                                t_mlkem = std::time::Instant::now();
-                                                eprintln!("[client] ML-KEM CT sent token={token_u32}");
-                                                // Both sides must inject the same PSK
-                                                if let (Some(iface), Some(peer_pubkey)) = (
-                                                    mlkem_cfg.wg_iface.as_deref(),
-                                                    mlkem_cfg.wg_peer_pubkey.as_deref(),
-                                                ) {
-                                                    match mlkem::inject_psk(iface, peer_pubkey, &psk) {
-                                                        Ok(()) => eprintln!("[client] PSK injected locally"),
-                                                        Err(e) => eprintln!("[client] inject_psk error: {e:?}"),
+                                            match mlkem_channel::connect_tls(&connector, server_addr).await {
+                                                Ok(mut tls) => {
+                                                    t_tls = std::time::Instant::now();
+                                                    if let Err(e) = mlkem_channel::send_on(
+                                                        &mut tls, token_u32, &session_nonce, &ct,
+                                                    ).await {
+                                                        eprintln!("[client] ML-KEM send error: {e:?}");
+                                                    } else {
+                                                        t_mlkem = std::time::Instant::now();
+                                                        eprintln!("[client] ML-KEM CT sent token={token_u32}");
+                                                        if let (Some(iface), Some(peer_pubkey)) = (
+                                                            mlkem_cfg.wg_iface.as_deref(),
+                                                            mlkem_cfg.wg_peer_pubkey.as_deref(),
+                                                        ) {
+                                                            match mlkem::inject_psk(iface, peer_pubkey, &psk) {
+                                                                Ok(()) => eprintln!("[client] PSK injected locally"),
+                                                                Err(e) => eprintln!("[client] inject_psk error: {e:?}"),
+                                                            }
+                                                        }
+                                                        t_psk = std::time::Instant::now();
                                                     }
                                                 }
-                                                t_psk = std::time::Instant::now();
+                                                Err(e) => eprintln!("[client] TLS connect error: {e:?}"),
                                             }
                                         }
                                         Err(e) => eprintln!("[client] make_connector error: {e:?}"),
@@ -499,13 +505,16 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                         }
                         let t_end = std::time::Instant::now();
                         eprintln!(
-                            "[timing] token={} total_us={} zk_us={} mlkem_us={} psk_us={} tail_us={}",
+                            "[timing] token={} total_us={} zk_us={} mlkem_us={} psk_us={} tail_us={} encap_us={} tls_us={} write_us={}",
                             token_log,
                             t_end.duration_since(t_start).as_micros(),
                             t_zk.duration_since(t_start).as_micros(),
                             t_mlkem.duration_since(t_zk).as_micros(),
                             t_psk.duration_since(t_mlkem).as_micros(),
                             t_end.duration_since(t_psk).as_micros(),
+                            t_encap.duration_since(t_zk).as_micros(),
+                            t_tls.duration_since(t_encap).as_micros(),
+                            t_mlkem.duration_since(t_tls).as_micros(),
                         );
 
                         if let Some(t) = ev.token {

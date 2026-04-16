@@ -53,18 +53,25 @@ wait "$FOLLOWER" 2>/dev/null || true
 awk '
 /^\[timing\] / {
     token=""; total=""; zk=""; mlkem=""; psk=""; tail="";
+    encap=""; tls=""; write="";
     for (i=2; i<=NF; i++) {
         split($i, kv, "=");
-        if (kv[1]=="token") token=kv[2];
-        else if (kv[1]=="total_us") total=kv[2];
-        else if (kv[1]=="zk_us") zk=kv[2];
-        else if (kv[1]=="mlkem_us") mlkem=kv[2];
-        else if (kv[1]=="psk_us") psk=kv[2];
-        else if (kv[1]=="tail_us") tail=kv[2];
+        if (kv[1]=="token")          token=kv[2];
+        else if (kv[1]=="total_us")  total=kv[2];
+        else if (kv[1]=="zk_us")     zk=kv[2];
+        else if (kv[1]=="mlkem_us")  mlkem=kv[2];
+        else if (kv[1]=="psk_us")    psk=kv[2];
+        else if (kv[1]=="tail_us")   tail=kv[2];
+        else if (kv[1]=="encap_us")  encap=kv[2];
+        else if (kv[1]=="tls_us")    tls=kv[2];
+        else if (kv[1]=="write_us")  write=kv[2];
     }
     if (token != "") {
-        printf "{\"token\":%s,\"total_us\":%s,\"zk_us\":%s,\"mlkem_us\":%s,\"psk_us\":%s,\"tail_us\":%s}\n",
-            token, total, zk, mlkem, psk, tail;
+        if (encap == "") encap="0";
+        if (tls   == "") tls="0";
+        if (write == "") write="0";
+        printf "{\"token\":%s,\"total_us\":%s,\"zk_us\":%s,\"mlkem_us\":%s,\"psk_us\":%s,\"tail_us\":%s,\"encap_us\":%s,\"tls_us\":%s,\"write_us\":%s}\n",
+            token, total, zk, mlkem, psk, tail, encap, tls, write;
     }
 }
 ' "$LOG_FILE"

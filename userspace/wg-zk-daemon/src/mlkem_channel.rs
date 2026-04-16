@@ -95,38 +95,57 @@ pub async fn bind(port: u16) -> Result<TcpListener> {
 // ── Client side ───────────────────────────────────────────────────────────────
 
 /// Build a TLS connector that pins the gateway's certificate by fingerprint.
+///
+/// Privacy-hardened config:
+///   - No client certificate (preserves client anonymity)
+///   - Fingerprint-pinned server verifier (rejects anything not matching expected_fp)
+///   - Session resumption disabled (prevents ticket-based cross-session linkability)
+///   - No ALPN offered (no protocol fingerprint leaked beyond SNI and cert)
 pub fn make_connector(expected_fp: &str) -> Result<TlsConnector> {
     let fp = expected_fp.to_string();
-
     let verifier = Arc::new(FingerprintVerifier { expected_fp: fp });
 
-    let config = rustls::ClientConfig::builder()
+    let mut config = rustls::ClientConfig::builder()
         .dangerous()
         .with_custom_certificate_verifier(verifier)
         .with_no_client_auth();
 
+    // Disable resumption: session tickets or IDs from a prior handshake would
+    // let a passive observer link successive ML-KEM sessions from the same
+    // client, breaking handshake-level unlinkability.
+    config.resumption = rustls::client::Resumption::disabled();
+    // Intentionally leave alpn_protocols empty — offering e.g. "wgzk/1" would
+    // brand the traffic as our protocol in the clear.
+    config.alpn_protocols.clear();
+
     Ok(TlsConnector::from(Arc::new(config)))
 }
 
-/// Send ML-KEM ciphertext to the gateway daemon over TLS.
-pub async fn send_ciphertext(
+/// Establish a TCP+TLS connection to the gateway (no message sent yet).
+/// Split out from `send_ciphertext` so callers can time TLS setup independently
+/// of message transmission (used by the benchmark harness).
+pub async fn connect_tls(
     connector: &TlsConnector,
     server_addr: &str,
+) -> Result<tokio_rustls::client::TlsStream<TcpStream>> {
+    let stream = TcpStream::connect(server_addr)
+        .await
+        .with_context(|| format!("TCP connect to {server_addr}"))?;
+    let server_name = ServerName::try_from("wgzk-gateway").context("server name")?;
+    let tls = connector
+        .connect(server_name, stream)
+        .await
+        .context("TLS connect")?;
+    Ok(tls)
+}
+
+/// Write a single ML-KEM message onto an already-established TLS stream.
+pub async fn send_on(
+    tls: &mut tokio_rustls::client::TlsStream<TcpStream>,
     token: u32,
     session_nonce: &[u8; 32],
     ct: &[u8; CT_LEN],
 ) -> Result<()> {
-    let stream = TcpStream::connect(server_addr)
-        .await
-        .with_context(|| format!("TCP connect to {server_addr}"))?;
-
-    // ServerName: use a fixed placeholder (cert is verified by fingerprint, not hostname)
-    let server_name = ServerName::try_from("wgzk-gateway").context("server name")?;
-    let mut tls = connector
-        .connect(server_name, stream)
-        .await
-        .context("TLS connect")?;
-
     let mut buf = [0u8; MSG_LEN];
     buf[0..4].copy_from_slice(&token.to_le_bytes());
     buf[4..36].copy_from_slice(session_nonce);
@@ -135,6 +154,19 @@ pub async fn send_ciphertext(
     tls.write_all(&buf).await.context("write message")?;
     tls.flush().await?;
     Ok(())
+}
+
+/// Send ML-KEM ciphertext to the gateway daemon over TLS (thin wrapper that
+/// combines `connect_tls` + `send_on` for the production path).
+pub async fn send_ciphertext(
+    connector: &TlsConnector,
+    server_addr: &str,
+    token: u32,
+    session_nonce: &[u8; 32],
+    ct: &[u8; CT_LEN],
+) -> Result<()> {
+    let mut tls = connect_tls(connector, server_addr).await?;
+    send_on(&mut tls, token, session_nonce, ct).await
 }
 
 // ── Certificate fingerprint verifier ─────────────────────────────────────────
