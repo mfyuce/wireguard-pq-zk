@@ -54,6 +54,19 @@ struct MlKemConfig {
 
 impl MlKemConfig {
     fn from_env() -> Self {
+        // WGZK_DISABLE_MLKEM=1 forces ZK-only mode: all ML-KEM fields are None
+        // so is_{client,gateway}_ready() return false and the TLS/encap paths
+        // are skipped. Used by the benchmark harness for 3-config comparison.
+        if std::env::var("WGZK_DISABLE_MLKEM").map(|v| v == "1").unwrap_or(false) {
+            eprintln!("[mlkem] WGZK_DISABLE_MLKEM=1 — running in ZK-only mode");
+            return MlKemConfig {
+                dk_seed: None, cert_pem: None, key_pem: None,
+                wg_iface: std::env::var("WG_IFACE").ok(),
+                wg_peer_pubkey: std::env::var("WG_PEER_PUBKEY").ok(),
+                server_ek: None, server_addr: None, cert_fp: None,
+                port: mlkem_channel::DEFAULT_PORT,
+            };
+        }
         let dk_seed = std::env::var("MLKEM_DK_SEED").ok().and_then(|h| {
             let b = hex::decode(h.trim()).ok()?;
             b.try_into().ok()
@@ -165,9 +178,10 @@ async fn main() -> Result<()> {
 
     // Load ML-KEM config from env
     let mlkem_cfg = MlKemConfig::from_env();
+    let mlkem_disabled = std::env::var("WGZK_DISABLE_MLKEM").map(|v| v == "1").unwrap_or(false);
 
     // Optionally print generated cert info on gateway
-    if mode == "gateway" && mlkem_cfg.cert_pem.is_none() {
+    if mode == "gateway" && !mlkem_disabled && mlkem_cfg.cert_pem.is_none() {
         eprintln!("[mlkem] MLKEM_CERT_PEM not set — generating self-signed cert");
         match mlkem_channel::generate_self_signed() {
             Ok((cert, key, fp)) => {
@@ -407,6 +421,13 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                             eprintln!("[daemon] NEED_PROOF without token; dedup skipped");
                         }
 
+                        // Nanosecond-resolution timing anchors for the benchmark harness.
+                        // These Instants bracket each daemon phase so the host-side
+                        // analyzer can compute per-phase deltas below journald's
+                        // microsecond-coalescing floor.
+                        let t_start = std::time::Instant::now();
+                        let token_log = ev.token.unwrap_or(0);
+
                         eprintln!(
                             "[daemon] NEED_PROOF ifindex={} peer_id={} token={:?}",
                             ev.ifindex, ev.peer_id, ev.token
@@ -420,8 +441,12 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                         // Schnorr++: fresh session nonce for transcript binding
                         let session_nonce = zk::gen_session_nonce();
                         let (r, s) = zk::prove(sk, &session_nonce);
+                        let t_zk = std::time::Instant::now();
                         eprintln!("[client] proving r={} s={} nonce={}",
                             hex::encode(r), hex::encode(s), hex::encode(session_nonce));
+
+                        let mut t_mlkem = t_zk;
+                        let mut t_psk = t_zk;
 
                         // ML-KEM hybrid: encap + send CT to gateway over TLS
                         if let (Some(server_ek), Some(server_addr), Some(cert_fp)) = (
@@ -442,6 +467,7 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                                             ).await {
                                                 eprintln!("[client] ML-KEM send error: {e:?}");
                                             } else {
+                                                t_mlkem = std::time::Instant::now();
                                                 eprintln!("[client] ML-KEM CT sent token={token_u32}");
                                                 // Both sides must inject the same PSK
                                                 if let (Some(iface), Some(peer_pubkey)) = (
@@ -453,6 +479,7 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                                                         Err(e) => eprintln!("[client] inject_psk error: {e:?}"),
                                                     }
                                                 }
+                                                t_psk = std::time::Instant::now();
                                             }
                                         }
                                         Err(e) => eprintln!("[client] make_connector error: {e:?}"),
@@ -470,6 +497,16 @@ async fn run_client_once(mlkem_cfg: MlKemConfig) -> Result<()> {
                                 ev.peer_id, ev.token
                             );
                         }
+                        let t_end = std::time::Instant::now();
+                        eprintln!(
+                            "[timing] token={} total_us={} zk_us={} mlkem_us={} psk_us={} tail_us={}",
+                            token_log,
+                            t_end.duration_since(t_start).as_micros(),
+                            t_zk.duration_since(t_start).as_micros(),
+                            t_mlkem.duration_since(t_zk).as_micros(),
+                            t_psk.duration_since(t_mlkem).as_micros(),
+                            t_end.duration_since(t_psk).as_micros(),
+                        );
 
                         if let Some(t) = ev.token {
                             inflight().await.lock().await.remove(&(t as u64));
