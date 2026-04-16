@@ -1,0 +1,3 @@
+{"side":"client","token":1401798789,"total_us":2360,"zk_us":59,"mlkem_us":1462,"psk_us":687,"tail_us":150,"encap_us":84,"tls_us":1362,"write_us":16}
+{"side":"client","token":2707335265,"total_us":3469,"zk_us":103,"mlkem_us":1885,"psk_us":1384,"tail_us":95,"encap_us":139,"tls_us":1740,"write_us":4}
+{"scale_summary":{"N":1,"n_client_timing":2,"n_gateway_timing":0,"wall_us":4805445}}

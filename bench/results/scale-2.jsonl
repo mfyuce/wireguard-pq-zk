@@ -1,0 +1,5 @@
+{"side":"client","token":1115722281,"total_us":4779,"zk_us":60,"mlkem_us":2950,"psk_us":1065,"tail_us":703,"encap_us":93,"tls_us":2853,"write_us":3}
+{"side":"client","token":4215499130,"total_us":2626,"zk_us":73,"mlkem_us":1161,"psk_us":933,"tail_us":458,"encap_us":108,"tls_us":1049,"write_us":3}
+{"side":"client","token":3702532307,"total_us":3475,"zk_us":80,"mlkem_us":2017,"psk_us":1160,"tail_us":217,"encap_us":99,"tls_us":1913,"write_us":3}
+{"side":"client","token":2220184709,"total_us":3031,"zk_us":80,"mlkem_us":1262,"psk_us":1175,"tail_us":512,"encap_us":99,"tls_us":1133,"write_us":30}
+{"scale_summary":{"N":2,"n_client_timing":4,"n_gateway_timing":0,"wall_us":5133021}}
