@@ -5,6 +5,8 @@ A modified Linux 6.8 WireGuard kernel module that adds **Schnorr zero-knowledge 
 This is the reference implementation for the paper:
 > *Privacy-Preserving and Post-Quantum VPN Handshakes with Schnorr-Based Zero-Knowledge Proofs*, Computers & Security 2026.
 
+> **New to the crypto?** See [EXPLANATIONS.md](EXPLANATIONS.md) for background on X25519, Schnorr zero-knowledge proofs, ML-KEM-768, and the hybrid PSK design used in this repo.
+
 ---
 
 ## How It Works
