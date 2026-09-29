@@ -49,13 +49,19 @@ daemon contains no fault injection and refuses to start when `WGZK_FAULT` is set
 ### Measurements
 
 ```bash
-python3 bench/latency.py wireguard --trials 1000 --out bench/results/r1/wireguard
-python3 bench/latency.py wgzk-zkpq --trials 1000 --out bench/results/r1/wgzk-zkpq
-python3 bench/env_dump.py bench/results/r1/env.json
+bash vagrant/fetch-rosenpass.sh && bash vagrant/fetch-pqwireguard.sh   # the systems compared with
+(cd vagrant/pqwireguard && vagrant up)                                  # test bed of PQ-WireGuard
+python3 bench/campaign.py --out bench/results/r1/NAME --blocks 10 --trials 100 --max-load 4
+python3 bench/latency.py wgzk-zkpq --trials 100 --out /tmp/one-system   # one system alone
 ```
 
 The metric is the same for every system: the round-trip time of the first packet on a tunnel
-without a session, minus the median round-trip time over the established session.
+without a session, minus the median round-trip time over the established session. Systems:
+WireGuard as shipped with the kernel, with and without a preshared key; Rosenpass 0.2.3;
+PQ-WireGuard; this design with and without ML-KEM. The systems take turns block by block,
+and every block records the load of the host, because other work on the host delays the
+machines. `bench/when-quiet.sh` runs a campaign while the host is quiet and waits while it
+is not.
 
 ---
 
