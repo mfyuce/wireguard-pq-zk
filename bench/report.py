@@ -110,11 +110,12 @@ def main():
     for n in names:
         s = runs[n][0]
         h = s["host_load"]
-        commits = sorted({b["commit"][:7] + ("+" if b["dirty_files"] else "") for b in s["blocks"]})
+        # What ran, not what the repository looked like: module and daemon of every block.
+        under_test = {json.dumps(b["machines"], sort_keys=True) for b in s["blocks"]}
         print(f"| {n} | {s['system']} | {len(s['blocks'])} | {s['trials']} | {s['succeeded']} | "
               f"{s['failed']} | {h['min']} to {h['max']} | {h['threads']} |")
-        if len(commits) > 1:
-            sys.exit(f"{n}: blocks of different commits: {commits}")
+        if len(under_test) > 1:
+            sys.exit(f"{n}: its blocks ran different modules or daemons")
     print("\n" + head.format("run"))
     for n in names:
         s, trials = runs[n]
