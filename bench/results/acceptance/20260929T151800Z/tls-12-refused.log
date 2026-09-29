@@ -1,0 +1,68 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=DIeH5aM7zU+kZtykMSA/d58fiByDKYLM5CAg43LwEDg=
+address=fd57:475a:4b00:0:f57:1356:9308:f0a6
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: DIeH5aM7zU+kZtykMSA/d58fiByDKYLM5CAg43LwEDg=
+  private key: (hidden)
+  listening port: 45593
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=0a141c1a721742609e902a150aa68efe;i=11a79;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=142818f6e;t=65ca0d4f2f122;x=d14b70c1efe158d7
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py tls --dst 192.168.100.1:51821 --count 3 --tls12
+{"count": 3, "delivered": 0, "errors": {"SSLError": 3}, "event": "tls_done", "length": 1124, "refused": 3, "seconds": 0.02, "tls12": true}
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py tls --dst 192.168.100.1:51821 --count 3
+{"count": 3, "delivered": 3, "errors": {}, "event": "tls_done", "length": 1124, "refused": 0, "seconds": 0.021, "tls12": false}
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o cat --no-pager --after-cursor='s=0a141c1a721742609e902a150aa68efe;i=11a79;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=142818f6e;t=65ca0d4f2f122;x=d14b70c1efe158d7'
+[mlkem_channel] connection dropped: TLS accept: peer is incompatible: SupportedVersionsExtensionRequired
+[mlkem_channel] connection dropped: TLS accept: peer is incompatible: SupportedVersionsExtensionRequired
+[mlkem_channel] connection dropped: TLS accept: peer is incompatible: SupportedVersionsExtensionRequired
+[mlkem_channel] ciphertext buffered token=3617893208 nonce_prefix=96c85501
+[mlkem_channel] ciphertext buffered token=2115544584 nonce_prefix=6628fa1d
+[mlkem_channel] ciphertext buffered token=2202227224 nonce_prefix=360e2544
+[exit 0]

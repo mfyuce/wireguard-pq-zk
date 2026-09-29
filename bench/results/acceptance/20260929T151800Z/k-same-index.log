@@ -1,0 +1,109 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-only bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-only, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-only bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=i4ZVM7eV51WURY9SXXBnwR4UqNK/dXVz1GiASRQUwWc=
+address=fd57:475a:4b00:0:1103:647c:e53c:9d3b
+active
+==> wgzk daemon running (client, zk-only, epoch 1)
+interface: wg1l
+  public key: i4ZVM7eV51WURY9SXXBnwR4UqNK/dXVz1GiASRQUwWc=
+  private key: (hidden)
+  listening port: 37356
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] iptables -I INPUT -p udp --dport 51921 -j DROP
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py capture --iface enp0s8 --out /tmp/fresh.bin --timeout 8 --gw-pub /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE= & sleep 0.7; ping -6 -c 1 -W 2 fd57:475a:4b00::1 >/dev/null; wait; ip link set wg1l down
+{"event": "captured", "mac1_ok": true, "n": 1, "nonce4": "8ef35374", "sender_index": 3771346842, "sport": 37356}
+{"captured": 1, "event": "capture_done", "wanted": 1}
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP
+[exit 0]
+
+$ [client] wg show wg1l public-key
+i4ZVM7eV51WURY9SXXBnwR4UqNK/dXVz1GiASRQUwWc=
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=0a141c1a721742609e902a150aa68efe;i=11b90;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=1448139f6;t=65ca0d6f29bab;x=db2f4e5e24c94a14
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py send --in /tmp/fresh.bin --dst 192.168.100.1:51921 --count 2 --listen 1.5
+{"bytes": 244, "cookie_replies": 0, "count": 2, "event": "sent", "mutate": "none", "nonce4": "8ef35374", "other_replies": 0, "plain": false, "responses": 1, "seconds": 0.0, "sender_index": 3771346842}
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 2
+refused_full 0
+undecryptable 0
+accepted 1
+refused_handshake 0
+rejected 1
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o cat --no-pager --after-cursor='s=0a141c1a721742609e902a150aa68efe;i=11b90;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=1448139f6;t=65ca0d6f29bab;x=db2f4e5e24c94a14'
+[timing] side=gateway pending_id=1 token=- nonce_prefix=8ef35374 result=ok wait_ct_us=0 verify_us=438 decap_us=0 peer_us=242 total_us=714
+[timing] side=gateway pending_id=2 token=- nonce_prefix=8ef35374 result=fail reason=replay wait_ct_us=0 verify_us=0 decap_us=0 peer_us=0 total_us=34
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+i4ZVM7eV51WURY9SXXBnwR4UqNK/dXVz1GiASRQUwWc=	fd57:475a:4b00:0:1103:647c:e53c:9d3b/128
+[exit 0]

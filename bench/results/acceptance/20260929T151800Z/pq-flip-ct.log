@@ -1,0 +1,122 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=yHkCYJsTYiRre3zXuVu9UwdUwgOKzFx+OOOr3tSXATc=
+address=fd57:475a:4b00:0:afe4:c09:35dc:8675
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: yHkCYJsTYiRre3zXuVu9UwdUwgOKzFx+OOOr3tSXATc=
+  private key: (hidden)
+  listening port: 58873
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [client] test -x /usr/local/bin/wg-zk-daemon-fault
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/system/wgzk.service.d; umask 077; printf '%s\n' WGZK_FAULT=flip_ct > /etc/wgzk-test.env; printf '%s' '[Service]
+EnvironmentFile=/etc/wgzk-test.env
+ExecStart=
+ExecStart=/usr/local/bin/wg-zk-daemon-fault
+' > /etc/systemd/system/wgzk.service.d/test.conf; systemctl daemon-reload; systemctl restart wgzk; sleep 1; systemctl is-active wgzk
+active
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=0a141c1a721742609e902a150aa68efe;i=1166e;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=138c50dd5;t=65ca0cb366f8a;x=7ca435af85ee3b2b
+[exit 0]
+
+$ [client] wg-zk-daemon new-connection --iface wg1l >/dev/null
+[exit 0]
+
+$ [client] wg show wg1l public-key
+d+uw0+4Nmzk3wm7tZYMpQ/YGTDoHAafjt98vv5qzXHg=
+[exit 0]
+
+$ [client] ping -6 -c 1 -W 2 fd57:475a:4b00::1
+PING fd57:475a:4b00::1(fd57:475a:4b00::1) 56 data bytes
+
+--- fd57:475a:4b00::1 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+[exit 1]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 1
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 1
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o cat --no-pager --after-cursor='s=0a141c1a721742609e902a150aa68efe;i=1166e;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=138c50dd5;t=65ca0cb366f8a;x=7ca435af85ee3b2b'
+[mlkem_channel] ciphertext buffered token=369791808 nonce_prefix=0a5d38f9
+[timing] side=gateway pending_id=1 token=369791808 nonce_prefix=0a5d38f9 result=fail reason=proof wait_ct_us=2 verify_us=319 decap_us=0 peer_us=0 total_us=375
+[exit 0]
+
+$ [client] wg show wg1l latest-handshakes
+/04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=	0
+[exit 0]

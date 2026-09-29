@@ -1,0 +1,111 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=QGczesiu1C9ntx1yo+gfd/bQM9kE2/62HBXK0NlTkVM=
+address=fd57:475a:4b00:0:8370:5fbd:2325:b43c
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: QGczesiu1C9ntx1yo+gfd/bQM9kE2/62HBXK0NlTkVM=
+  private key: (hidden)
+  listening port: 47250
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=0a141c1a721742609e902a150aa68efe;i=10ff1;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=121e093a3;t=65ca0b451f558;x=899d8071c0545f06
+[exit 0]
+
+$ [gateway] (timeout 12 tcpdump -ni enp0s8 -w /tmp/tls.pcap 'tcp port 51821' >/dev/null 2>&1 </dev/null &) ; sleep 1
+[exit 0]
+
+$ [client] wg show wg1l public-key
+QGczesiu1C9ntx1yo+gfd/bQM9kE2/62HBXK0NlTkVM=
+[exit 0]
+
+$ [client] ping -6 -c 1 -W 2 fd57:475a:4b00::1
+PING fd57:475a:4b00::1(fd57:475a:4b00::1) 56 data bytes
+64 bytes from fd57:475a:4b00::1: icmp_seq=1 ttl=64 time=10.4 ms
+
+--- fd57:475a:4b00::1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 10.433/10.433/10.433/0.000 ms
+[exit 0]
+
+$ [client] wg-zk-daemon new-connection --iface wg1l >/dev/null
+[exit 0]
+
+$ [client] wg show wg1l public-key
+ykflKNi2BIhauQk3onVZgKdVnco14fsx0+meLt9LrhA=
+[exit 0]
+
+$ [client] ping -6 -c 1 -W 2 fd57:475a:4b00::1
+PING fd57:475a:4b00::1(fd57:475a:4b00::1) 56 data bytes
+64 bytes from fd57:475a:4b00::1: icmp_seq=1 ttl=64 time=14.4 ms
+
+--- fd57:475a:4b00::1 ping statistics ---
+1 packets transmitted, 1 received, 0% packet loss, time 0ms
+rtt min/avg/max/mdev = 14.404/14.404/14.404/0.000 ms
+[exit 0]
+
+$ [gateway] pkill tcpdump; sleep 0.5; true
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+QGczesiu1C9ntx1yo+gfd/bQM9kE2/62HBXK0NlTkVM=	fd57:475a:4b00:0:8370:5fbd:2325:b43c/128
+ykflKNi2BIhauQk3onVZgKdVnco14fsx0+meLt9LrhA=	fd57:475a:4b00:0:9302:97f3:19f:1268/128
+[exit 0]
+
+$ [gateway] wg show wg1r preshared-keys | awk '{print $2}' | sort -u | wc -l
+2
+[exit 0]
+
+$ [gateway] wg show wg1r endpoints | awk '{print $2}'
+192.168.100.2:47250
+192.168.100.2:53203
+[exit 0]
+
+$ [gateway] tcpdump -nr /tmp/tls.pcap 'tcp[tcpflags] & (tcp-syn|tcp-ack) == tcp-syn' 2>/dev/null | awk '{print $3}' | sort -u | wc -l
+2
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o cat --no-pager --after-cursor='s=0a141c1a721742609e902a150aa68efe;i=10ff1;b=88dd17b1f48f4d6e89e06cff6d7c7b62;m=121e093a3;t=65ca0b451f558;x=899d8071c0545f06'
+[mlkem_channel] ciphertext buffered token=781865643 nonce_prefix=89baccd2
+[timing] side=gateway pending_id=1 token=781865643 nonce_prefix=89baccd2 result=ok wait_ct_us=2 verify_us=446 decap_us=362 peer_us=220 total_us=1088
+[mlkem_channel] ciphertext buffered token=3812319373 nonce_prefix=e12ec4d0
+[timing] side=gateway pending_id=2 token=3812319373 nonce_prefix=e12ec4d0 result=ok wait_ct_us=2 verify_us=167 decap_us=154 peer_us=132 total_us=481
+[exit 0]
