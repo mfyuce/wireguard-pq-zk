@@ -13,9 +13,12 @@ The handshake latency of a trial is the first round-trip time minus the median
 of the later ones. Trials that get no reply are reported, not dropped.
 
 Reset per system:
-  wgzk        new session key and address (wg-zk-daemon new-connection)
-  wgzk-rekey  same session key, the peer is removed and added again
-  wireguard   the peer is removed and added again
+  wgzk         new session key and address (wg-zk-daemon new-connection)
+  wgzk-rekey   same session key, the peer is removed and added again
+  wireguard    the peer is removed and added again
+  pqwireguard  the interface is removed and created again (pqwg-up)
+
+Runs with Python 3.6, which is what Ubuntu 18.04 has.
 """
 
 import argparse
@@ -30,7 +33,16 @@ TUNNEL_NET = "fd57:475a:4b00::/64"
 
 
 def sh(cmd):
-    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True)
+
+
+def now_ns():
+    return int(time.time() * 1e9)
+
+
+def monotonic_us():
+    return int(time.monotonic() * 1e6)
 
 
 def must(cmd):
@@ -51,10 +63,10 @@ def ping(count, wait, interval=None):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("system", choices=["wgzk", "wgzk-rekey", "wireguard"])
+    ap.add_argument("system", choices=["wgzk", "wgzk-rekey", "wireguard", "pqwireguard"])
     ap.add_argument("--iface", required=True)
-    ap.add_argument("--gw-pub", required=True)
-    ap.add_argument("--endpoint", required=True)
+    ap.add_argument("--gw-pub", default="")
+    ap.add_argument("--endpoint", default="")
     ap.add_argument("--psk-file", default="")
     ap.add_argument("--trials", type=int, default=100)
     ap.add_argument("--steady", type=int, default=5)
@@ -68,20 +80,23 @@ def main():
              f"wg set {a.iface} peer {a.gw_pub} allowed-ips {TUNNEL_NET} endpoint {a.endpoint}{psk}")
     reset = {"wgzk": f"wg-zk-daemon new-connection --iface {a.iface}",
              "wgzk-rekey": readd,
-             "wireguard": readd}[a.system]
+             "wireguard": readd,
+             "pqwireguard": "pqwg-up"}[a.system]
+    if a.system != "pqwireguard" and not (a.gw_pub and a.endpoint):
+        sys.exit("--gw-pub and --endpoint are required for this system")
     if a.system == "wgzk-rekey":
         must(f"wg-zk-daemon new-connection --iface {a.iface}")
 
     for i in range(1, a.trials + 1):
-        start = time.time_ns()
-        t = time.monotonic_ns()
+        start = now_ns()
+        t = monotonic_us()
         must(reset)
-        reset_us = (time.monotonic_ns() - t) // 1000
+        reset_us = monotonic_us() - t
         first = ping(1, a.wait)[0]
         steady = ping(a.steady, 2, 0.2) if first is not None else []
         print(json.dumps({
             "label": a.label, "system": a.system, "trial": i,
-            "start_ns": start, "end_ns": time.time_ns(),
+            "start_ns": start, "end_ns": now_ns(),
             "reset_us": reset_us, "ok": first is not None,
             "first_rtt_ms": first, "steady_rtt_ms": steady,
         }), flush=True)

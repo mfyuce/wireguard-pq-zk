@@ -14,6 +14,9 @@ Systems:
     wgzk-zkpq-rekey   as wgzk-zkpq, likewise
     rosenpass         Rosenpass (official release) on WireGuard as shipped; every trial is a
                       cold start: its key exchange, then the WireGuard handshake
+    pq-wireguard      PQ-WireGuard, the artefact of its authors, on its own test bed
+                      (vagrant/pqwireguard: Ubuntu 18.04, kernel 4.15.0-91); both machines of
+                      that test bed must be up
 
 Metric, the same for every system: the round-trip time of the first packet on
 a tunnel without a session, minus the median round-trip time of the packets
@@ -61,13 +64,18 @@ SYSTEMS = {
     "wgzk-zk-rekey":   {"kind": "wgzk-rekey", "iface": "wg1l", "variant": "zk-only"},
     "wgzk-zkpq-rekey": {"kind": "wgzk-rekey", "iface": "wg1l", "variant": "zk-pq"},
     "rosenpass":       {"kind": "rosenpass", "iface": "rosenpass0"},
+    "pq-wireguard":    {"kind": "pqwireguard", "iface": "wg0", "vagrant": "vagrant/pqwireguard",
+                        "machines": {"gateway": "pq-gateway", "client": "pq-client"},
+                        "gw_ip": "192.168.101.1"},
 }
 
 
 class Rig:
-    def __init__(self, outdir):
+    def __init__(self, outdir, spec):
         self.sshcfg = os.path.join(outdir, "ssh.cfg")
-        cfg = subprocess.run(["vagrant", "ssh-config"], cwd=ROOT, capture_output=True, text=True)
+        self.names = spec.get("machines", {})
+        cfg = subprocess.run(["vagrant", "ssh-config"], cwd=os.path.join(ROOT, spec.get("vagrant", ".")),
+                             capture_output=True, text=True)
         if cfg.returncode != 0:
             sys.exit("vagrant ssh-config failed; are both machines up?\n" + cfg.stderr)
         with open(self.sshcfg, "w") as f:
@@ -75,7 +83,7 @@ class Rig:
         self.log = open(os.path.join(outdir, "setup.log"), "a")
 
     def ssh(self, vm, script):
-        return ["ssh", "-F", self.sshcfg, vm, "sudo bash -c " + shlex.quote(script)]
+        return ["ssh", "-F", self.sshcfg, self.names.get(vm, vm), "sudo bash -c " + shlex.quote(script)]
 
     def must(self, vm, script, timeout=300):
         r = subprocess.run(self.ssh(vm, script), capture_output=True, text=True, timeout=timeout)
@@ -161,7 +169,12 @@ def setup(rig, name, spec):
     tools = ("mkdir -p /etc/systemd/journald.conf.d; "
              "printf '[Journal]\\nRateLimitIntervalSec=0\\n' > /etc/systemd/journald.conf.d/wgzk.conf; "
              "systemctl restart systemd-journald; ")
-    if spec["kind"] == "rosenpass":
+    if spec["kind"] == "pqwireguard":
+        # The gateway learns the key of the client from the shared folder.
+        gw = spec["gw_ip"]
+        rig.must("client", tools + f"bash /vagrant/vagrant/pqwireguard/provision.sh client {gw}")
+        rig.must("gateway", tools + f"bash /vagrant/vagrant/pqwireguard/provision.sh gateway {gw}")
+    elif spec["kind"] == "rosenpass":
         rig.must("gateway", tools + "bash /vagrant/vagrant/11-rosenpass.sh gateway keys")
         rig.must("client", tools + "bash /vagrant/vagrant/11-rosenpass.sh client keys")
         rig.must("gateway", "bash /vagrant/vagrant/11-rosenpass.sh gateway start")
@@ -181,8 +194,10 @@ def setup(rig, name, spec):
     facts = {}
     for vm in ("gateway", "client"):
         facts[vm] = {
+            "kernel": rig.must(vm, "uname -r").strip(),
             "module_srcversion": rig.must(vm, "cat /sys/module/wireguard/srcversion").strip(),
-            "daemon_sha256": rig.must(vm, "sha256sum /usr/local/bin/wg-zk-daemon | cut -d' ' -f1").strip(),
+            "module_version": rig.must(vm, "cat /sys/module/wireguard/version 2>/dev/null || true").strip(),
+            "daemon_sha256": rig.must(vm, "sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1").strip(),
         }
         if spec["kind"] == "rosenpass":
             facts[vm]["rosenpass"] = rig.must(vm, "rosenpass --version").strip()
@@ -236,15 +251,16 @@ def main():
             sys.exit(f"{a.out} holds trials of another system")
     # Other work on the host delays the machines. The load is recorded with every run.
     load_before = open("/proc/loadavg").read().split()[:3]
-    rig = Rig(a.out)
+    rig = Rig(a.out, spec)
     facts = setup(rig, a.system, spec)
     gw_pub = open(os.path.join(ROOT, "vagrant/keys/public_right")).read().strip()
+    gw_ip = spec.get("gw_ip", GW_IP)
     wgzk = spec["kind"] in ("wgzk", "wgzk-rekey")
     cursors = {vm: rig.cursor(vm) for vm in ("gateway", "client")} if wgzk else {}
 
     # Traffic before the trials, so that no trial pays for cold caches or for
     # address resolution on the test network.
-    rig.must("client", f"ping -n -c 3 -W 2 {GW_IP} >/dev/null; "
+    rig.must("client", f"ping -n -c 3 -W 2 {gw_ip} >/dev/null; "
              "ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true")
     time.sleep(1)
     if wgzk:
@@ -262,6 +278,9 @@ def main():
     if spec["kind"] == "rosenpass":
         cmd = (f"python3 /vagrant/bench/guest/rosenpass_trials.py --gateway {GW_IP} "
                f"--trials {a.trials} --steady {a.steady} --gap {a.gap}")
+    elif spec["kind"] == "pqwireguard":
+        cmd = (f"python3 /vagrant/bench/guest/trials.py pqwireguard --iface {spec['iface']} "
+               f"--trials {a.trials} --steady {a.steady} --gap {a.gap} --label {a.system}")
     else:
         psk = "--psk-file /vagrant/vagrant/keys/stock.psk" if spec.get("psk") else ""
         cmd = (f"python3 /vagrant/bench/guest/trials.py {spec['kind']} --iface {spec['iface']} "

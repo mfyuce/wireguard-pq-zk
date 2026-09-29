@@ -13,7 +13,8 @@ import os
 import statistics
 import sys
 
-ORDER = ["wireguard", "wireguard-psk", "rosenpass", "wgzk-zk", "wgzk-zkpq", "wgzk-zk-rekey", "wgzk-zkpq-rekey"]
+ORDER = ["wireguard", "wireguard-psk", "rosenpass", "pq-wireguard", "wgzk-zk", "wgzk-zkpq",
+         "wgzk-zk-rekey", "wgzk-zkpq-rekey"]
 
 
 def quantile(v, q):

@@ -1,0 +1,39 @@
+# -*- mode: ruby -*-
+# PQ-WireGuard as its authors released it, on the system they used: Ubuntu
+# 18.04 with its kernel 4.15, in the version of the date of the artefact
+# (kernel.sh). Two machines, as in the main test bed, on a
+# network of their own.
+#
+#   bash vagrant/fetch-pqwireguard.sh          # once, on the host
+#   cd vagrant/pqwireguard && vagrant up
+#
+# The module uses AVX2. VirtualBox passes the instruction set of the host
+# through; provision.sh stops if the guest does not see it.
+
+GATEWAY_IP = "192.168.101.1"
+CLIENT_IP  = "192.168.101.2"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/bionic64"
+  config.vm.synced_folder "../..", "/vagrant", type: "virtualbox"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = ENV.fetch("WGZK_VM_MEMORY", "1024").to_i
+    vb.cpus   = ENV.fetch("WGZK_VM_CPUS", "1").to_i
+    vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+  end
+
+  config.vm.provision "shell", path: "kernel.sh", reboot: true
+
+  config.vm.define "pq-gateway", primary: true do |gw|
+    gw.vm.hostname = "pqwg-gateway"
+    gw.vm.network "private_network", ip: GATEWAY_IP, virtualbox__intnet: "pqwg-internal"
+    gw.vm.provision "shell", path: "provision.sh", args: ["gateway", GATEWAY_IP]
+  end
+
+  config.vm.define "pq-client" do |cl|
+    cl.vm.hostname = "pqwg-client"
+    cl.vm.network "private_network", ip: CLIENT_IP, virtualbox__intnet: "pqwg-internal"
+    cl.vm.provision "shell", path: "provision.sh", args: ["client", GATEWAY_IP]
+  end
+end

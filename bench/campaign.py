@@ -3,8 +3,10 @@
 
     python3 bench/campaign.py --out bench/results/r1/NAME --blocks 10 --trials 100
 
-Runs on the host, in the repository root, with both machines up. The systems
-take turns block by block, so that a change of the load on the host during
+Runs on the host, in the repository root, with the machines of both test beds
+up (the second one, vagrant/pqwireguard, is needed for pq-wireguard only; name
+the systems with --systems to leave it out). The systems take turns block by
+block, so that a change of the load on the host during
 the campaign does not fall on one system alone. Writes env.json first and
 report.md last. A campaign that was interrupted continues where it stopped.
 """
@@ -16,7 +18,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DEFAULT = ["wireguard", "wireguard-psk", "rosenpass", "wgzk-zk", "wgzk-zkpq"]
+DEFAULT = ["wireguard", "wireguard-psk", "rosenpass", "pq-wireguard", "wgzk-zk", "wgzk-zkpq"]
 
 
 def blocks_done(out, system):
