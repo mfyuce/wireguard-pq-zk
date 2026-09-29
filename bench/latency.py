@@ -25,6 +25,14 @@ the duration of its exchange (process start to preshared key installed) and
 the WireGuard handshake that follows with the key in place, measured as above.
 See bench/guest/rosenpass_trials.py.
 
+CPU time (measurement M-2) is taken over the same trials, in two ways.
+Daemon: the time that the threads of the daemon spent on a CPU, from
+/proc/<pid>/task/*/schedstat, divided by the number of successful handshakes;
+precise, and defined for this design only. Machine: the busy time of the whole
+machine from /proc/stat over the trials, minus the busy time of an idle window
+scaled to the same length; an upper bound, since it contains the driver of the
+trials, and the same procedure for every system and for both machines.
+
 Output directory: trials.jsonl (one record per trial; for wgzk with the timing
 lines of both daemons), summary.json, setup.log.
 """
@@ -97,6 +105,39 @@ class Rig:
         return lines
 
 
+DAEMONS = {"wgzk": "wg-zk-daemon", "wgzk-rekey": "wg-zk-daemon", "rosenpass": "rosenpass"}
+
+
+def cpu_snapshot(rig, vm, process):
+    """Busy time of the machine and on-CPU time of `process`, both in seconds."""
+    script = "head -1 /proc/stat; getconf CLK_TCK; date +%s.%N"
+    if process:
+        script += (f"; for p in $(pidof {process}); do for f in /proc/$p/task/*/schedstat; "
+                   "do cat $f; done; done 2>/dev/null")
+    lines = rig.must(vm, script).splitlines()
+    f = [int(x) for x in lines[0].split()[1:]]
+    hz = int(lines[1])
+    # user nice system idle iowait irq softirq steal
+    busy = (f[0] + f[1] + f[2] + f[5] + f[6] + f[7]) / hz
+    daemon = sum(int(ln.split()[0]) for ln in lines[3:] if ln.split()) / 1e9 if process else None
+    return {"busy_s": busy, "daemon_s": daemon, "clock_s": float(lines[2])}
+
+
+def cpu_report(idle0, idle1, run0, run1, handshakes):
+    """CPU time per handshake of one machine, in ms."""
+    idle_rate = (idle1["busy_s"] - idle0["busy_s"]) / (idle1["clock_s"] - idle0["clock_s"])
+    seconds = run1["clock_s"] - run0["clock_s"]
+    busy = run1["busy_s"] - run0["busy_s"]
+    out = {"window_s": round(seconds, 1), "busy_s": round(busy, 3),
+           "idle_busy_per_s": round(idle_rate, 5),
+           "machine_ms_per_handshake": None, "daemon_ms_per_handshake": None}
+    if handshakes:
+        out["machine_ms_per_handshake"] = (busy - idle_rate * seconds) * 1000 / handshakes
+        if run0["daemon_s"] is not None and run1["daemon_s"] is not None:
+            out["daemon_ms_per_handshake"] = (run1["daemon_s"] - run0["daemon_s"]) * 1000 / handshakes
+    return out
+
+
 def setup(rig, name, spec):
     tools = ("mkdir -p /etc/systemd/journald.conf.d; "
              "printf '[Journal]\\nRateLimitIntervalSec=0\\n' > /etc/systemd/journald.conf.d/wgzk.conf; "
@@ -156,6 +197,7 @@ def main():
     ap.add_argument("--trials", type=int, default=100)
     ap.add_argument("--steady", type=int, default=5)
     ap.add_argument("--gap", type=float, default=0.3)
+    ap.add_argument("--idle", type=float, default=30, help="seconds of the idle window for the CPU time")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
 
@@ -174,6 +216,15 @@ def main():
     time.sleep(1)
     if wgzk:
         cursors = {vm: rig.cursor(vm) for vm in ("gateway", "client")}
+
+    # The client of Rosenpass is a new process in every trial; only the gateway has a
+    # process whose time can be followed.
+    process = {"gateway": DAEMONS.get(spec["kind"]),
+               "client": None if spec["kind"] == "rosenpass" else DAEMONS.get(spec["kind"])}
+    idle0 = {vm: cpu_snapshot(rig, vm, process[vm]) for vm in process}
+    time.sleep(a.idle)
+    idle1 = {vm: cpu_snapshot(rig, vm, process[vm]) for vm in process}
+    run0 = idle1
 
     if spec["kind"] == "rosenpass":
         cmd = (f"python3 /vagrant/bench/guest/rosenpass_trials.py --gateway {GW_IP} "
@@ -194,6 +245,7 @@ def main():
         err = p.stderr.read()
     if p.returncode != 0:
         sys.exit(f"the trial loop failed (exit {p.returncode}):\n{err}")
+    run1 = {vm: cpu_snapshot(rig, vm, process[vm]) for vm in process}
 
     if wgzk:
         time.sleep(1)
@@ -227,6 +279,7 @@ def main():
         "steady_rtt_ms": describe([t["steady_median_ms"] for t in ok]),
         "reset_ms": describe([t["reset_us"] / 1000 for t in trials if "reset_us" in t]),
         "machines": facts,
+        "cpu": {vm: cpu_report(idle0[vm], idle1[vm], run0[vm], run1[vm], len(ok)) for vm in process},
         "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                                  text=True).stdout.strip(),
         "dirty_files": len(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True,

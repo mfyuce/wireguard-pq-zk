@@ -1,0 +1,105 @@
+#!/usr/bin/env python3
+"""Tables of a measurement campaign, from the summaries that bench/latency.py wrote.
+
+    python3 bench/report.py bench/results/r1
+
+Prints Markdown: handshake latency of every system, the phases of this design
+on both sides, CPU time. Every number is computed from trials.jsonl again and
+compared with the summary, so that a table cannot drift from its data.
+"""
+
+import json
+import os
+import statistics
+import sys
+
+ORDER = ["wireguard", "wireguard-psk", "rosenpass", "wgzk-zk", "wgzk-zkpq", "wgzk-zk-rekey", "wgzk-zkpq-rekey"]
+
+
+def quantile(v, q):
+    v = sorted(v)
+    pos = (len(v) - 1) * q
+    lo = int(pos)
+    hi = min(lo + 1, len(v) - 1)
+    return v[lo] + (v[hi] - v[lo]) * (pos - lo)
+
+
+def fmt(x, digits=2):
+    return "" if x is None else f"{x:.{digits}f}"
+
+
+def row(name, values):
+    if not values:
+        return f"| {name} | 0 | | | | | | |"
+    q = [quantile(values, p) for p in (0.25, 0.5, 0.75, 0.95, 0.99)]
+    return (f"| {name} | {len(values)} | {fmt(q[1])} | {fmt(q[0])} | {fmt(q[2])} | "
+            f"{fmt(q[3])} | {fmt(q[4])} | {fmt(max(values))} |")
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    root = sys.argv[1]
+    runs = {}
+    for name in sorted(os.listdir(root)):
+        s = os.path.join(root, name, "summary.json")
+        t = os.path.join(root, name, "trials.jsonl")
+        if os.path.isfile(s) and os.path.isfile(t):
+            runs[name] = (json.load(open(s)), [json.loads(line) for line in open(t)])
+    if not runs:
+        sys.exit(f"no summaries under {root}")
+    names = sorted(runs, key=lambda n: (ORDER.index(runs[n][0]["system"])
+                                        if runs[n][0]["system"] in ORDER else 99, n))
+
+    head = "| {} | n | median | p25 | p75 | p95 | p99 | max |\n|---|---|---|---|---|---|---|---|"
+    print("## Handshake latency (ms): first packet to its reply, minus the steady round trip\n")
+    print("| run | system | trials | succeeded | failed |\n|---|---|---|---|---|")
+    for n in names:
+        s = runs[n][0]
+        print(f"| {n} | {s['system']} | {s['trials']} | {s['succeeded']} | {s['failed']} |")
+    print("\n" + head.format("run"))
+    for n in names:
+        s, trials = runs[n]
+        values = [t["handshake_ms"] for t in trials if t.get("handshake_ms") is not None]
+        print(row(n, values))
+        check = s["handshake_ms"].get("median")
+        if values and abs(statistics.median(values) - check) > 1e-9:
+            sys.exit(f"{n}: summary and trials disagree on the median")
+
+    print("\n## Steady round trip over the established session (ms)\n\n" + head.format("run"))
+    for n in names:
+        print(row(n, [t["steady_median_ms"] for t in runs[n][1] if t.get("steady_median_ms") is not None]))
+
+    ros = [n for n in names if runs[n][0]["system"] == "rosenpass"]
+    if ros:
+        print("\n## Rosenpass: key exchange and cold start (ms)\n\n" + head.format("run, part"))
+        for n in ros:
+            ok = [t for t in runs[n][1] if t.get("handshake_ms") is not None]
+            print(row(f"{n}, exchange", [t["exchange_ms"] for t in ok]))
+            print(row(f"{n}, exchange + handshake", [t["exchange_ms"] + t["handshake_ms"] for t in ok]))
+
+    ours = [n for n in names if runs[n][0]["system"].startswith("wgzk")]
+    if ours:
+        print("\n## This design: phases inside the daemons (ms), trials with exactly one handshake\n")
+        for n in ours:
+            one = [t for t in runs[n][1] if t.get("handshake_ms") is not None
+                   and len(t.get("client", [])) == 1 and len(t.get("gateway", [])) == 1]
+            print(f"\n### {n} ({len(one)} trials)\n\n" + head.format("side, phase"))
+            for side, keys in (("client", ("zk_us", "encap_us", "tls_us", "write_us", "psk_us", "total_us")),
+                               ("gateway", ("wait_ct_us", "verify_us", "decap_us", "peer_us", "total_us"))):
+                for k in keys:
+                    print(row(f"{side}, {k[:-3]}", [int(t[side][0][k]) / 1000 for t in one]))
+            print(row("outside the daemons",
+                      [t["handshake_ms"] - (int(t["client"][0]["total_us"]) + int(t["gateway"][0]["total_us"])) / 1000
+                       for t in one]))
+
+    print("\n## CPU time per handshake (ms)\n")
+    print("| run | machine | daemon | whole machine, idle subtracted | window (s) |\n|---|---|---|---|---|")
+    for n in names:
+        for vm, c in sorted(runs[n][0].get("cpu", {}).items()):
+            print(f"| {n} | {vm} | {fmt(c['daemon_ms_per_handshake'], 3)} | "
+                  f"{fmt(c['machine_ms_per_handshake'], 3)} | {c['window_s']} |")
+
+
+if __name__ == "__main__":
+    main()
