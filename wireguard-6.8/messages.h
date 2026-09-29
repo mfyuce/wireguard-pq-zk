@@ -85,25 +85,25 @@ struct message_handshake_initiation {
 	u8 encrypted_timestamp[noise_encrypted_len(NOISE_TIMESTAMP_LEN)];
 	struct message_macs macs;
 };
-#define MESSAGE_HANDSHAKE_INITIATION_ZK 0xA1  // unused WireGuard type
-#define WGZK_R_LEN 32
-#define WGZK_S_LEN 32
-struct message_handshake_initiation_zk {
-    struct message_header header;                       // type = 0xA1, offset 0
-    __le32 sender_index;                                // offset 4
-    u8 unencrypted_ephemeral[NOISE_PUBLIC_KEY_LEN];     // offset 8,  32 bytes
-    u8 encrypted_static[noise_encrypted_len(NOISE_PUBLIC_KEY_LEN)];   // offset 40, 48 bytes
-    u8 encrypted_timestamp[noise_encrypted_len(NOISE_TIMESTAMP_LEN)]; // offset 88, 28 bytes
-    u8 zk_r[NOISE_PUBLIC_KEY_LEN];                      // offset 116, 32 bytes  (Ristretto255 R)
-    u8 zk_s[NOISE_PUBLIC_KEY_LEN];                      // offset 148, 32 bytes  (Schnorr scalar s)
-    u8 zk_nonce[32];                                    // offset 180, 32 bytes  (session nonce, transcript binding)
-    struct message_macs macs;                           // offset 212, 32 bytes
-} __packed;                                             // Total: 244 bytes
 
-static inline bool wgzk_is_zk_initiation_len(size_t len)
-{
-	return len == sizeof(struct message_handshake_initiation_zk);
-}
+/* wgzk: the initiation with proof. It is the WireGuard initiation up to and
+ * including the timestamp, then commitment, response and session nonce of
+ * the proof in clear, then the MACs, which cover all of it. 244 bytes.
+ */
+#define MESSAGE_HANDSHAKE_INITIATION_ZK 0xA1
+#define WGZK_PROOF_FIELD_LEN 32
+
+struct message_handshake_initiation_zk {
+	struct message_header header;
+	__le32 sender_index;
+	u8 unencrypted_ephemeral[NOISE_PUBLIC_KEY_LEN];
+	u8 encrypted_static[noise_encrypted_len(NOISE_PUBLIC_KEY_LEN)];
+	u8 encrypted_timestamp[noise_encrypted_len(NOISE_TIMESTAMP_LEN)];
+	u8 zk_r[WGZK_PROOF_FIELD_LEN];
+	u8 zk_s[WGZK_PROOF_FIELD_LEN];
+	u8 zk_nonce[WGZK_PROOF_FIELD_LEN];
+	struct message_macs macs;
+} __packed;
 
 struct message_handshake_response {
 	struct message_header header;

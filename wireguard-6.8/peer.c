@@ -9,6 +9,7 @@
 #include "timers.h"
 #include "peerlookup.h"
 #include "noise.h"
+#include "zk_proof.h"
 
 #include <linux/kref.h>
 #include <linux/lockdep.h>
@@ -53,6 +54,7 @@ struct wg_peer *wg_peer_create(struct wg_device *wg,
 	kref_init(&peer->refcount);
 	skb_queue_head_init(&peer->staged_packet_queue);
 	wg_noise_reset_last_sent_handshake(&peer->last_sent_handshake);
+	wg_noise_reset_last_sent_handshake(&peer->zk_last_proof_request);
 	set_bit(NAPI_STATE_NO_BUSY_POLL, &peer->napi.state);
 	netif_napi_add(wg->dev, &peer->napi, wg_packet_rx_poll);
 	napi_enable(&peer->napi);
@@ -94,6 +96,9 @@ static void peer_make_dead(struct wg_peer *peer)
 static void peer_remove_after_dead(struct wg_peer *peer)
 {
 	WARN_ON(!peer->is_dead);
+
+	/* A proof that was handed down for this peer and never used. */
+	zk_proof_clear(peer->internal_id);
 
 	/* No more keypairs can be created for this peer, since is_dead protects
 	 * add_new_keypair, so we can now destroy existing ones.
@@ -237,25 +242,24 @@ void wg_peer_uninit(void)
 {
 	kmem_cache_destroy(peer_cache);
 }
-/* device içindeki peer listesini tarar, eşleşeni döndürür.
- * Başarılıysa refcount +1 ile döner; kullanınca wg_peer_put() yap. */
-/* internal_id → wg_peer*
- * Başarılı olursa refcount (+1) ile döner; işin bitince wg_peer_put(peer). */
-struct wg_peer *wg_lookup_peer_by_internal_id(struct wg_device *wg, u64 internal_id)
+
+/* Returns the peer with @internal_id and a reference to it, or NULL. Process
+ * context only. The peer list is no RCU list: it is read and changed under
+ * device_update_lock, here as everywhere else in the module.
+ */
+struct wg_peer *wg_lookup_peer_by_internal_id(struct wg_device *wg,
+					      u64 internal_id)
 {
 	struct wg_peer *peer, *ret = NULL;
 
-	rcu_read_lock_bh();
-	list_for_each_entry_rcu(peer, &wg->peer_list, peer_list) {
-		if (READ_ONCE(peer->is_dead))
-			continue;
-		if (READ_ONCE(peer->internal_id) == internal_id) {
-			if (wg_peer_get(peer))      /* ref al */
-				ret = peer;
+	mutex_lock(&wg->device_update_lock);
+	list_for_each_entry(peer, &wg->peer_list, peer_list) {
+		if (peer->internal_id == internal_id) {
+			ret = wg_peer_get_maybe_zero(peer);
 			break;
 		}
 	}
-	rcu_read_unlock_bh();
+	mutex_unlock(&wg->device_update_lock);
 
-	return ret; /* yoksa NULL */
+	return ret;
 }

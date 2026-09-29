@@ -21,6 +21,7 @@
 static void wg_packet_send_handshake_initiation(struct wg_peer *peer)
 {
 	struct message_handshake_initiation_zk packet;
+	struct message_handshake_initiation *noise = (void *)&packet;
 
 	if (!wg_birthdate_has_expired(atomic64_read(&peer->last_sent_handshake),
 				      REKEY_TIMEOUT))
@@ -32,9 +33,7 @@ static void wg_packet_send_handshake_initiation(struct wg_peer *peer)
 			    &peer->endpoint.addr);
 
 	memset(&packet, 0, sizeof(packet));
-	if (wg_noise_handshake_create_initiation(
-			(struct message_handshake_initiation *)&packet,
-			&peer->handshake)) {
+	if (wg_noise_handshake_create_initiation(noise, &peer->handshake)) {
 		wg_cookie_add_mac_to_packet(&packet, sizeof(packet), peer);
 		wg_timers_any_authenticated_packet_traversal(peer);
 		wg_timers_any_authenticated_packet_sent(peer);
@@ -44,11 +43,10 @@ static void wg_packet_send_handshake_initiation(struct wg_peer *peer)
 					      HANDSHAKE_DSCP);
 		wg_timers_handshake_initiated(peer);
 	} else {
-		/* ZK cache miss: reset rate-limiter so SET_PROOF can immediately
-		 * re-trigger wg_packet_send_queued_handshake_initiation without
-		 * waiting REKEY_TIMEOUT seconds.
+		/* wgzk: no proof was at hand and nothing was sent. The proof
+		 * arrives with SET_PROOF, which must be able to send at once.
 		 */
-		atomic64_set(&peer->last_sent_handshake, 0);
+		wg_noise_reset_last_sent_handshake(&peer->last_sent_handshake);
 	}
 }
 

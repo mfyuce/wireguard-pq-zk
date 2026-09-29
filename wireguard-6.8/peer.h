@@ -46,6 +46,7 @@ struct wg_peer {
 	rwlock_t endpoint_lock;
 	struct noise_handshake handshake;
 	atomic64_t last_sent_handshake;
+	atomic64_t zk_last_proof_request;
 	struct work_struct transmit_handshake_work, clear_peer_work, transmit_packet_work;
 	struct cookie latest_cookie;
 	struct hlist_node pubkey_hash;
@@ -82,6 +83,7 @@ void wg_peer_remove_all(struct wg_device *wg);
 
 int wg_peer_init(void);
 void wg_peer_uninit(void);
-struct wg_peer *wg_lookup_peer_by_internal_id(struct wg_device *wg, u64 internal_id);
+struct wg_peer *wg_lookup_peer_by_internal_id(struct wg_device *wg,
+					      u64 internal_id);
 
 #endif /* _WG_PEER_H */

@@ -15,6 +15,6 @@ wireguard-y += ratelimiter.o
 wireguard-y += cookie.o
 wireguard-y += netlink.o
 
-wireguard-y += wgzk_genl.o zk_pending.o zk_proof.o
+wireguard-y += wgzk_genl.o zk_pending.o zk_proof.o wgzk_stats.o
 
 obj-$(CONFIG_WIREGUARD) := wireguard.o

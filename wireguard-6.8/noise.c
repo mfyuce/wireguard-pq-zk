@@ -9,17 +9,20 @@
 #include "messages.h"
 #include "queueing.h"
 #include "peerlookup.h"
+#include "timers.h"
 
 #include <linux/rcupdate.h>
 #include <linux/slab.h>
 #include <linux/bitmap.h>
 #include <linux/scatterlist.h>
 #include <linux/highmem.h>
+#include <linux/random.h>
 #include <crypto/utils.h>
 
 #include "zk_pending.h"
 #include "zk_proof.h"
 #include "wgzk_genl.h"
+#include "wgzk_stats.h"
 
 /* This implements Noise_IKpsk2:
  *
@@ -186,6 +189,11 @@ void wg_noise_expire_current_peer_keypairs(struct wg_peer *peer)
 
 	wg_noise_handshake_clear(&peer->handshake);
 	wg_noise_reset_last_sent_handshake(&peer->last_sent_handshake);
+	/* A proof is bound to the static key of the interface, which may be
+	 * what changed. The next initiation asks for a new one, at once.
+	 */
+	zk_proof_clear(peer->internal_id);
+	wg_noise_reset_last_sent_handshake(&peer->zk_last_proof_request);
 
 	spin_lock_bh(&peer->keypairs.keypair_update_lock);
 	keypair = rcu_dereference_protected(peer->keypairs.next_keypair,
@@ -517,12 +525,22 @@ static void tai64n_now(u8 output[NOISE_TIMESTAMP_LEN])
 	*(__be32 *)(output + sizeof(__be64)) = cpu_to_be32(now.tv_nsec);
 }
 
+/* Builds a type 0xA1 initiation: the Noise IK first message followed by the
+ * proof that the daemon handed down with SET_PROOF. @dst must point to a
+ * struct message_handshake_initiation_zk. If no proof is waiting, nothing is
+ * built; the daemon is asked for one and sends the initiation itself through
+ * SET_PROOF.
+ */
 bool
 wg_noise_handshake_create_initiation(struct message_handshake_initiation *dst,
 				     struct noise_handshake *handshake)
 {
+	struct message_handshake_initiation_zk *zkdst = (void *)dst;
+	struct wg_peer *peer = handshake->entry.peer;
+	u8 local_static[NOISE_PUBLIC_KEY_LEN];
 	u8 timestamp[NOISE_TIMESTAMP_LEN];
 	u8 key[NOISE_SYMMETRIC_KEY_LEN];
+	bool need_proof = false;
 	bool ret = false;
 
 	/* We need to wait for crng _before_ taking any locks, since
@@ -535,6 +553,27 @@ wg_noise_handshake_create_initiation(struct message_handshake_initiation *dst,
 
 	if (unlikely(!handshake->static_identity->has_identity))
 		goto out;
+
+	if (!zk_proof_get_and_clear(peer->internal_id, zkdst->zk_r,
+				    zkdst->zk_s, zkdst->zk_nonce)) {
+		/* Every packet queued for a peer without a session asks for an
+		 * initiation. The daemon is asked once per REKEY_TIMEOUT, the
+		 * pace at which WireGuard retries a handshake.
+		 */
+		u64 asked = atomic64_read(&peer->zk_last_proof_request);
+
+		if (wg_birthdate_has_expired(asked, REKEY_TIMEOUT)) {
+			atomic64_set(&peer->zk_last_proof_request,
+				     ktime_get_coarse_boottime_ns());
+			memcpy(local_static,
+			       handshake->static_identity->static_public,
+			       NOISE_PUBLIC_KEY_LEN);
+			need_proof = true;
+		}
+		goto out;
+	}
+	/* The proof is used up. Whatever needs the next one may ask at once. */
+	wg_noise_reset_last_sent_handshake(&peer->zk_last_proof_request);
 
 	dst->header.type = cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION_ZK);
 
@@ -574,38 +613,6 @@ wg_noise_handshake_create_initiation(struct message_handshake_initiation *dst,
 			handshake->entry.peer->device->index_hashtable,
 			&handshake->entry);
 
-    /* === ZK alanları: varsa cache'ten doldur; yoksa USERSAPCE’e iste, abort et === */
-    if (le32_to_cpu(dst->header.type) == MESSAGE_HANDSHAKE_INITIATION_ZK) {
-        struct message_handshake_initiation_zk *zkdst = (void *)dst;
-        u8 r[32], s[32], nonce[32];
-        u64 pid = handshake->entry.peer->internal_id;
-        if (zk_proof_get_and_clear(pid, r, s, nonce)) {
-			pr_info("WG-ZK: using cached proof for peer_id=%llu nonce[0]=%02x\n",
-					(unsigned long long)pid, nonce[0]);
-            memcpy(zkdst->zk_r, r, 32);
-            memcpy(zkdst->zk_s, s, 32);
-            memcpy(zkdst->zk_nonce, nonce, 32);
-        } else {
-
-			struct wg_device *wgd = handshake->entry.peer->device;
-			u32 ifindex = wgd->dev->ifindex;
-			u32 sender_index = le32_to_cpu(zkdst->sender_index);
-			pr_info("WG-ZK: cache miss; requesting proof for peer_id=%llu (ifindex=%u)\n",
-					(unsigned long long)pid, ifindex);
-			/* R/S bilinmiyor → NULL geç. Daemon üretsin. */
-
-			wgzk_multicast_need_proof(
-					dev_net(wgd->dev),
-					ifindex,
-					pid,
-					handshake->remote_static /* optional peer pub */,
-					sender_index,
-					NULL, NULL);
-			/* Abort: wait for userspace to provide proof via SET_PROOF, then retry */
-			goto out;
-        }
-    }
-
 	handshake->state = HANDSHAKE_CREATED_INITIATION;
 	ret = true;
 
@@ -613,26 +620,39 @@ out:
 	up_write(&handshake->lock);
 	up_read(&handshake->static_identity->lock);
 	memzero_explicit(key, NOISE_SYMMETRIC_KEY_LEN);
+	if (need_proof) {
+		wgzk_stat_inc(WGZK_STAT_PROOF_REQUESTS);
+		wgzk_multicast_need_proof(dev_net(peer->device->dev),
+					  peer->device->dev->ifindex,
+					  peer->internal_id,
+					  handshake->remote_static, local_static,
+					  get_random_u32());
+	}
 	return ret;
 }
 
-struct wg_peer *
-wg_noise_handshake_consume_initiation(void *raw_msg, struct wg_device *wg)
+/* First half of consuming a type 0xA1 initiation. Decrypts the static key
+ * that the initiation carries, stores a copy of the packet and asks the
+ * daemon for a verdict. No peer is looked up and nothing of the handshake is
+ * kept: after an accepting verdict the stored packet goes through
+ * wg_noise_handshake_consume_initiation() like any other initiation.
+ *
+ * Returns 0 if the packet was stored, a negative error otherwise.
+ */
+int
+wg_noise_handshake_defer_initiation_zk(const struct message_handshake_initiation_zk *src,
+				       struct wg_device *wg,
+				       const struct endpoint *endpoint)
 {
-	const struct message_handshake_initiation *src = raw_msg;
-	struct wg_peer *peer = NULL, *ret_peer = NULL;
-	struct noise_handshake *handshake;
-	bool replay_attack, flood_attack;
+	u8 local_static[NOISE_PUBLIC_KEY_LEN];
 	u8 key[NOISE_SYMMETRIC_KEY_LEN];
 	u8 chaining_key[NOISE_HASH_LEN];
 	u8 hash[NOISE_HASH_LEN];
 	u8 s[NOISE_PUBLIC_KEY_LEN];
 	u8 e[NOISE_PUBLIC_KEY_LEN];
-	u8 t[NOISE_TIMESTAMP_LEN];
-	u64 initiation_consumption;
+	int ret = -EINVAL;
+	u64 id;
 
-
-    // Normal (non-ZK) handshake below:
 	down_read(&wg->static_identity.lock);
 	if (unlikely(!wg->static_identity.has_identity))
 		goto out;
@@ -646,37 +666,71 @@ wg_noise_handshake_consume_initiation(void *raw_msg, struct wg_device *wg)
 	if (!mix_dh(chaining_key, key, wg->static_identity.static_private, e))
 		goto out;
 
-    /* s (decrypt remote static), only now we can resolve peer */
+	/* s */
+	if (!message_decrypt(s, src->encrypted_static,
+			     sizeof(src->encrypted_static), key, hash)) {
+		wgzk_stat_inc(WGZK_STAT_UNDECRYPTABLE);
+		goto out;
+	}
+
+	memcpy(local_static, wg->static_identity.static_public,
+	       NOISE_PUBLIC_KEY_LEN);
+	ret = zk_pending_add(wg, src, endpoint, &id);
+	if (!ret)
+		wgzk_stat_inc(WGZK_STAT_DEFERRED);
+	else if (ret == -ENOSPC)
+		wgzk_stat_inc(WGZK_STAT_REFUSED_FULL);
+out:
+	up_read(&wg->static_identity.lock);
+	memzero_explicit(key, NOISE_SYMMETRIC_KEY_LEN);
+	memzero_explicit(hash, NOISE_HASH_LEN);
+	memzero_explicit(chaining_key, NOISE_HASH_LEN);
+	if (!ret)
+		wgzk_multicast_need_verify(dev_net(wg->dev), wg->dev->ifindex,
+					   id, le32_to_cpu(src->sender_index),
+					   s, local_static, src->zk_r,
+					   src->zk_s, src->zk_nonce);
+	return ret;
+}
+
+struct wg_peer *
+wg_noise_handshake_consume_initiation(struct message_handshake_initiation *src,
+				      struct wg_device *wg)
+{
+	struct wg_peer *peer = NULL, *ret_peer = NULL;
+	struct noise_handshake *handshake;
+	bool replay_attack, flood_attack;
+	u8 key[NOISE_SYMMETRIC_KEY_LEN];
+	u8 chaining_key[NOISE_HASH_LEN];
+	u8 hash[NOISE_HASH_LEN];
+	u8 s[NOISE_PUBLIC_KEY_LEN];
+	u8 e[NOISE_PUBLIC_KEY_LEN];
+	u8 t[NOISE_TIMESTAMP_LEN];
+	u64 initiation_consumption;
+
+	down_read(&wg->static_identity.lock);
+	if (unlikely(!wg->static_identity.has_identity))
+		goto out;
+
+	handshake_init(chaining_key, hash, wg->static_identity.static_public);
+
+	/* e */
+	message_ephemeral(e, src->unencrypted_ephemeral, chaining_key, hash);
+
+	/* es */
+	if (!mix_dh(chaining_key, key, wg->static_identity.static_private, e))
+		goto out;
+
+	/* s */
 	if (!message_decrypt(s, src->encrypted_static,
 			     sizeof(src->encrypted_static), key, hash))
 		goto out;
 
-    /* resolve peer AFTER s is known */
+	/* Lookup which peer we're actually talking to */
 	peer = wg_pubkey_hashtable_lookup(wg->peer_hashtable, s);
 	if (!peer)
 		goto out;
 	handshake = &peer->handshake;
-/* ZK hook: if this is a ZK handshake, short-circuit for user-space.
-	 * NOTE: header.type is little-endian; convert before comparing. */
-	if (le32_to_cpu(src->header.type) == MESSAGE_HANDSHAKE_INITIATION_ZK) {
-		const struct message_handshake_initiation_zk *zk = (const void *)src;
-		u32 sender_index = le32_to_cpu(zk->sender_index);
-
-        zk_pending_add(sender_index,
-                       wg_peer_get_maybe_zero(peer), /* keep a ref */
-                       wg,
-                       src, sizeof(*zk));
-		wgzk_multicast_need_verify(dev_net(wg->dev),
-								   wg->dev->ifindex,
-								   le32_to_cpu(sender_index),
-								   0 /* token, optional */,
-								   zk->zk_r, zk->zk_s,
-								   zk->zk_nonce);
-		pr_info("WG-ZK: Handshake ZK init index=%u — zk_pending_add\n",
-				sender_index);
-
-		return ERR_PTR(-EAGAIN); /* defer response */
-	}
 
 	/* ss */
 	if (!mix_precomputed_dh(chaining_key, key,

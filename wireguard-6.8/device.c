@@ -25,9 +25,8 @@
 #include <net/rtnetlink.h>
 #include <net/ip_tunnels.h>
 #include <net/addrconf.h>
-#include "wgzk_genl.h"
-#include "zk_pending.h"
 
+#include "zk_pending.h"
 
 static LIST_HEAD(device_list);
 
@@ -134,6 +133,8 @@ static int wg_stop(struct net_device *dev)
 		kfree_skb(skb);
 	atomic_set(&wg->handshake_queue_len, 0);
 	wg_socket_reinit(wg, NULL, NULL);
+	/* Initiations that wait for a verdict hold a reference on the device. */
+	zk_pending_flush_device(wg);
 	return 0;
 }
 
@@ -457,18 +458,11 @@ int __init wg_device_init(void)
 	if (ret)
 		goto error_vm;
 
-    /* Start background GC for WG-ZK pending table */
-    zk_pending_init_cleanup_timer();
-
 	ret = rtnl_link_register(&link_ops);
 	if (ret)
 		goto error_pernet;
 
-//    ret = wgzk_genl_init();
-//    if (ret)
-//        return ret;
-
-    return 0;
+	return 0;
 
 error_pernet:
 	unregister_pernet_device(&pernet_ops);
@@ -481,13 +475,9 @@ error_pm:
 
 void wg_device_uninit(void)
 {
-	zk_pending_cleanup_timer_exit();
 	rtnl_link_unregister(&link_ops);
 	unregister_pernet_device(&pernet_ops);
 	unregister_random_vmfork_notifier(&vm_notifier);
 	unregister_pm_notifier(&pm_notifier);
 	rcu_barrier();
-
-//    wgzk_genl_exit();
 }
-

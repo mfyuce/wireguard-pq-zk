@@ -18,14 +18,19 @@
 #include <net/rtnetlink.h>
 
 #include "zk_pending.h"
+#include "zk_proof.h"
 #include "wgzk_genl.h"
-
+#include "wgzk_stats.h"
 
 static int __init wg_mod_init(void)
 {
 	int ret;
 
-	wgzk_genl_init();
+	ret = wgzk_genl_init();
+	if (ret < 0)
+		return ret;
+	zk_pending_init();
+	wgzk_debugfs_init();
 
 	ret = wg_allowedips_slab_init();
 	if (ret < 0)
@@ -63,6 +68,9 @@ err_device:
 err_peer:
 	wg_allowedips_slab_uninit();
 err_allowedips:
+	wgzk_debugfs_exit();
+	zk_pending_exit();
+	wgzk_genl_exit();
 	return ret;
 }
 
@@ -73,9 +81,11 @@ static void __exit wg_mod_exit(void)
 	wg_peer_uninit();
 	wg_allowedips_slab_uninit();
 
+	/* No device is left at this point, so nothing can add to the tables. */
 	wgzk_genl_exit();
-
-    zk_pending_cleanup_timer_exit();
+	wgzk_debugfs_exit();
+	zk_pending_exit();
+	zk_proof_exit();
 }
 
 module_init(wg_mod_init);

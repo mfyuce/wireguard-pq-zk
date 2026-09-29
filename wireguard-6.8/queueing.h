@@ -30,6 +30,10 @@ wg_packet_percpu_multicore_worker_alloc(work_func_t function, void *ptr);
 /* receive.c APIs: */
 void wg_packet_receive(struct wg_device *wg, struct sk_buff *skb);
 void wg_packet_handshake_receive_worker(struct work_struct *work);
+struct endpoint;
+void wg_packet_zk_initiation_accepted(struct wg_peer *peer,
+				      const struct endpoint *endpoint,
+				      size_t len);
 /* NAPI poll function: */
 int wg_packet_rx_poll(struct napi_struct *napi, int budget);
 /* Workqueue worker: */

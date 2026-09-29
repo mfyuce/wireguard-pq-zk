@@ -15,8 +15,20 @@
 #include <linux/ipv6.h>
 #include <linux/udp.h>
 #include <net/ip_tunnels.h>
+#include <linux/moduleparam.h>
 #include "zk_pending.h"
 #include "wgzk_genl.h"
+#include "wgzk_stats.h"
+
+/* With require_zk set, which is the default, a plain WireGuard initiation
+ * (type 1) is dropped: every initiation has to carry a proof. Clearing it
+ * turns the module back into a WireGuard responder that also accepts type 1
+ * from the peers it knows.
+ */
+static bool wgzk_require_zk = true;
+module_param_named(require_zk, wgzk_require_zk, bool, 0644);
+MODULE_PARM_DESC(require_zk,
+		 "wgzk: drop initiations that carry no proof (default: on)");
 
 /* Must be called with bh disabled. */
 static void update_rx_stats(struct wg_peer *peer, size_t len)
@@ -94,6 +106,30 @@ static int prepare_skb_header(struct sk_buff *skb, struct wg_device *wg)
 	return 0;
 }
 
+/* Second half of consuming a type 0xA1 initiation: called by the verdict
+ * handler after the stored packet has passed
+ * wg_noise_handshake_consume_initiation(). Does for it what
+ * wg_receive_handshake_packet() does for an initiation that is consumed on
+ * arrival. Only here may the packet move the endpoint of the peer.
+ */
+void wg_packet_zk_initiation_accepted(struct wg_peer *peer,
+				      const struct endpoint *endpoint,
+				      size_t len)
+{
+	wg_socket_set_peer_endpoint(peer, endpoint);
+	net_dbg_ratelimited("%s: Receiving handshake initiation with proof from peer %llu (%pISpfsc)\n",
+			    peer->device->dev->name, peer->internal_id,
+			    &peer->endpoint.addr);
+	wg_packet_send_handshake_response(peer);
+
+	local_bh_disable();
+	update_rx_stats(peer, len);
+	local_bh_enable();
+
+	wg_timers_any_authenticated_packet_received(peer);
+	wg_timers_any_authenticated_packet_traversal(peer);
+}
+
 static void wg_receive_handshake_packet(struct wg_device *wg,
 					struct sk_buff *skb)
 {
@@ -114,8 +150,15 @@ static void wg_receive_handshake_packet(struct wg_device *wg,
 		return;
 	}
 
+	/* Initiations that wait for a verdict leave the handshake queue at
+	 * once, so a flood of them does not lengthen it. A pending table that
+	 * is half full therefore counts as load as well, which brings the
+	 * cookie reply and the per-source rate limit into play.
+	 */
 	under_load = atomic_read(&wg->handshake_queue_len) >=
-			MAX_QUEUED_INCOMING_HANDSHAKES / 8;
+			MAX_QUEUED_INCOMING_HANDSHAKES / 8 ||
+		     zk_pending_get_count() >=
+			READ_ONCE(wgzk_pending_max) / 2;
 	if (under_load) {
 		last_under_load = ktime_get_coarse_boottime_ns();
 	} else if (last_under_load) {
@@ -137,36 +180,42 @@ static void wg_receive_handshake_packet(struct wg_device *wg,
 	}
 
 	switch (SKB_TYPE_LE32(skb)) {
-		case cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION):
-		case cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION_ZK): {
-		struct message_handshake_initiation *message =
-			(struct message_handshake_initiation *)skb->data;
+	case cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION_ZK): {
+		struct message_handshake_initiation_zk *message =
+			(struct message_handshake_initiation_zk *)skb->data;
 		struct endpoint ep;
+		int ret;
 
 		if (packet_needs_cookie) {
 			wg_packet_send_handshake_cookie(wg, skb,
 							message->sender_index);
 			return;
 		}
-		/* === ZK mode hook === */
-        /* Gateway role: demand ZK verification */
-        peer = wg_noise_handshake_consume_initiation(message, wg);
-        if (IS_ERR(peer) && PTR_ERR(peer) == -EAGAIN) {
-            if (!wg_socket_endpoint_from_skb(&ep, skb))
-                zk_pending_set_endpoint(le32_to_cpu(message->sender_index), &ep);
-            /* noise.c already multicasts NEED_VERIFY with r/s */
-            return;  /* don’t continue until userspace VERIFY */
-        }
-		if (IS_ERR(peer)) {
-			if (PTR_ERR(peer) == -EAGAIN) { /* ZK: userspace VERIFY bekle */
-                /* Endpoint’i pending entry’ye kaydet ki VERIFY sonrası doğru yere cevap gitsin */
-                if (!wg_socket_endpoint_from_skb(&ep, skb)) {
-                    /* küçük yardımcı: sender_index message->sender_index */
-                    zk_pending_set_endpoint(le32_to_cpu(message->sender_index), &ep);
-                }
-				return;
-            }			return;
+		if (unlikely(wg_socket_endpoint_from_skb(&ep, skb)))
+			return;
+		ret = wg_noise_handshake_defer_initiation_zk(message, wg, &ep);
+		if (unlikely(ret))
+			net_dbg_skb_ratelimited("%s: wgzk: %pISpfsc not stored (%d)\n",
+						wg->dev->name, skb, ret);
+		/* The answer, if any, is sent when the verdict arrives. */
+		return;
+	}
+	case cpu_to_le32(MESSAGE_HANDSHAKE_INITIATION): {
+		struct message_handshake_initiation *message =
+			(struct message_handshake_initiation *)skb->data;
+
+		if (READ_ONCE(wgzk_require_zk)) {
+			wgzk_stat_inc(WGZK_STAT_LEGACY_DROPPED);
+			net_dbg_skb_ratelimited("%s: wgzk: dropped %pISpfsc, no proof\n",
+						wg->dev->name, skb);
+			return;
 		}
+		if (packet_needs_cookie) {
+			wg_packet_send_handshake_cookie(wg, skb,
+							message->sender_index);
+			return;
+		}
+		peer = wg_noise_handshake_consume_initiation(message, wg);
 		if (unlikely(!peer)) {
 			net_dbg_skb_ratelimited("%s: Invalid handshake initiation from %pISpfsc\n",
 						wg->dev->name, skb);
@@ -176,31 +225,6 @@ static void wg_receive_handshake_packet(struct wg_device *wg,
 		net_dbg_ratelimited("%s: Receiving handshake initiation from peer %llu (%pISpfsc)\n",
 				    wg->dev->name, peer->internal_id,
 				    &peer->endpoint.addr);
-
-//        /* === ZK: publish 96 bytes for userspace === */
-//		if (wgzk_is_zk_initiation_len(skb->len)) {
-//			const struct message_handshake_initiation_zk *mzk =
-//					(const struct message_handshake_initiation_zk *) message;
-//			{
-//				u8 out[96] = {0};
-//				/* layout:
-//                   [0..4]  : (optional) seq/marker (0 for now)
-//                   [4..8]  : sender_index/peer id (LE)
-//                   [8..32] : reserved (zeros)
-//                   [32..64]: zk_R (compressed Edwards-Y)
-//                   [64..96]: zk_s (scalar)
-//                */
-//				put_unaligned_le32((u32) peer->internal_id, &out[4]);
-//				memcpy(&out[32], mzk->zk_r, WGZK_R_LEN);
-//				memcpy(&out[64], mzk->zk_s, WGZK_S_LEN);
-//				zk_publish_handshake(out);
-//				/* If you want to block the handshake until userspace ACKs,
-//                   return here and resume from your netlink ACK handler.
-//                   For now we proceed to send the normal response. */
-//			}
-//		}
-//        /* === end ZK block === */
-
 		wg_packet_send_handshake_response(peer);
 		break;
 	}
