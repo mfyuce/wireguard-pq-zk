@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Tables of a measurement campaign, from the summaries that bench/latency.py wrote.
 
-    python3 bench/report.py bench/results/r1
+    python3 bench/report.py bench/results/r1 [--max-load 4]
+
+With --max-load, the trials of every block during which the load of the host
+was above the limit (before or after the block) are left out, and the report
+says how many blocks that were. CPU times are then taken from the remaining
+blocks as well.
 
 Prints Markdown: handshake latency of every system, the phases of this design
 on both sides, CPU time. Every number is computed from trials.jsonl again and
@@ -37,18 +42,64 @@ def row(name, values):
             f"{fmt(q[3])} | {fmt(q[4])} | {fmt(max(values))} |")
 
 
+def block_load(b):
+    return max(b["host"]["loadavg_before"][0], b["host"]["loadavg_after"][0])
+
+
+def cpu_of(blocks, vm):
+    """CPU time per handshake over the given blocks, as bench/latency.py computes it."""
+    handshakes = sum(b["succeeded"] for b in blocks)
+    out = {"window_s": round(sum(b["cpu"][vm]["window_s"] for b in blocks), 1), "handshakes": handshakes}
+    for key, name in (("busy_s", "machine"), ("irq_ticks_s", "interrupt_ticks"), ("daemon_s", "daemon")):
+        if not handshakes or any(key not in b["cpu"][vm]["used"] for b in blocks):
+            out[name + "_ms_per_handshake"] = None
+            continue
+        used = sum(b["cpu"][vm]["used"][key] for b in blocks)
+        idle = sum(b["cpu"][vm]["idle_per_s"][key] * b["cpu"][vm]["window_s"] for b in blocks)
+        out[name + "_ms_per_handshake"] = (used - idle) * 1000 / handshakes
+    return out
+
+
 def main():
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    limit = None
+    if "--max-load" in args:
+        i = args.index("--max-load")
+        limit = float(args[i + 1])
+        del args[i:i + 2]
+    if len(args) != 1:
         sys.exit(__doc__)
-    root = sys.argv[1]
+    root = args[0]
     runs = {}
+    left_out = {}
     for name in sorted(os.listdir(root)):
         s = os.path.join(root, name, "summary.json")
         t = os.path.join(root, name, "trials.jsonl")
-        if os.path.isfile(s) and os.path.isfile(t):
-            runs[name] = (json.load(open(s)), [json.loads(line) for line in open(t)])
+        if not (os.path.isfile(s) and os.path.isfile(t)):
+            continue
+        summary = json.load(open(s))
+        trials = [json.loads(line) for line in open(t)]
+        if limit is not None:
+            keep = [b for b in summary["blocks"] if block_load(b) <= limit]
+            left_out[name] = len(summary["blocks"]) - len(keep)
+            kept = {b["block"] for b in keep}
+            trials = [x for x in trials if x["block"] in kept]
+            ok = [x for x in trials if x.get("handshake_ms") is not None]
+            summary["blocks"] = keep
+            summary["trials"], summary["succeeded"] = len(trials), len(ok)
+            summary["failed"] = len(trials) - len(ok)
+            summary["handshake_ms"] = {"median": statistics.median([x["handshake_ms"] for x in ok])} if ok else {}
+            loads = [block_load(b) for b in keep] + [min(b["host"]["loadavg_before"][0],
+                                                          b["host"]["loadavg_after"][0]) for b in keep]
+            summary["host_load"] = {"min": min(loads) if loads else None, "max": max(loads) if loads else None,
+                                    "threads": summary["host_load"]["threads"]}
+            summary["cpu"] = {vm: cpu_of(keep, vm) for vm in summary["cpu"]} if keep else {}
+        runs[name] = (summary, trials)
     if not runs:
         sys.exit(f"no summaries under {root}")
+    if limit is not None:
+        print(f"Blocks with a host load above {limit} are left out: "
+              + ", ".join(f"{n} {k}" for n, k in left_out.items()) + ".\n")
     names = sorted(runs, key=lambda n: (ORDER.index(runs[n][0]["system"])
                                         if runs[n][0]["system"] in ORDER else 99, n))
 
@@ -62,7 +113,7 @@ def main():
         commits = sorted({b["commit"][:7] + ("+" if b["dirty_files"] else "") for b in s["blocks"]})
         print(f"| {n} | {s['system']} | {len(s['blocks'])} | {s['trials']} | {s['succeeded']} | "
               f"{s['failed']} | {h['min']} to {h['max']} | {h['threads']} |")
-        if len(commits) != 1:
+        if len(commits) > 1:
             sys.exit(f"{n}: blocks of different commits: {commits}")
     print("\n" + head.format("run"))
     for n in names:
@@ -70,7 +121,7 @@ def main():
         values = [t["handshake_ms"] for t in trials if t.get("handshake_ms") is not None]
         print(row(n, values))
         check = s["handshake_ms"].get("median")
-        if values and abs(statistics.median(values) - check) > 1e-9:
+        if values and check is not None and abs(statistics.median(values) - check) > 1e-9:
             sys.exit(f"{n}: summary and trials disagree on the median")
 
     print("\n## Steady round trip over the established session (ms)\n\n" + head.format("run"))
