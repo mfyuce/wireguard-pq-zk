@@ -1,33 +1,43 @@
 # -*- mode: ruby -*-
-# WireGuard ZK Handshake — two-VM demo
+# wgzk protocol R1: test bed of two virtual machines
 #
 # PRE-REQUISITE (once per machine):
-#   1. Build binaries on host:
-#        cd wireguard-6.8 && make -C /lib/modules/6.8.0-59-generic/build M=$(pwd) modules
-#        cd userspace/wg-zk-daemon && cargo build --release
-#        cd userspace/gen-pk && cargo build --release
+#   1. Build on host:
+#        bash vagrant/build-artifacts.sh      # kernel module, daemon, key generators
 #   2. Build the base box (installs kernel 6.8.0-59-generic):
 #        cd vagrant && bash build-base.sh
 #
 # USAGE:
-#   vagrant up          # generates keys, spins up gateway + client, runs ping test
+#   vagrant up          # generates keys, spins up gateway + client, runs the end-to-end test
 #   vagrant destroy -f  # tear everything down
 #
+# Environment (host), read at "vagrant up" and "vagrant provision":
+#   WGZK_VARIANT    zk-pq (default) or zk-only
+#   WGZK_EPOCH      credential epoch (default 1)
+#   WGZK_VM_MEMORY  guest memory in MB (default 1024)
+#   WGZK_VM_CPUS    guest CPUs (default 1)
+#
 # Network layout:
-#   gateway  eth1=192.168.100.1  wg1r=192.168.1.2  dum0r=10.20.10.10/24
-#   client   eth1=192.168.100.2  wg1l=192.168.1.1  dum0l=10.10.10.10/24
+#   gateway  eth1=192.168.100.1  wg1r=fd57:475a:4b00::1/64, no peers at start
+#   client   eth1=192.168.100.2  wg1l=address derived from the session key, /128
+# The client has no long-term WireGuard key (docs/protocol-r1.md).
 
 GATEWAY_IP = "192.168.100.1"
 CLIENT_IP  = "192.168.100.2"
 BASE_BOX   = "wgzk-base"
+
+VARIANT   = ENV.fetch("WGZK_VARIANT", "zk-pq")
+EPOCH     = ENV.fetch("WGZK_EPOCH", "1")
+VM_MEMORY = ENV.fetch("WGZK_VM_MEMORY", "1024").to_i
+VM_CPUS   = ENV.fetch("WGZK_VM_CPUS", "1").to_i
 
 Vagrant.configure("2") do |config|
   config.vm.box = BASE_BOX
   config.vm.synced_folder ".", "/vagrant", type: "virtualbox"
 
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = 512
-    vb.cpus   = 1
+    vb.memory = VM_MEMORY
+    vb.cpus   = VM_CPUS
     vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
   end
 
@@ -46,7 +56,7 @@ Vagrant.configure("2") do |config|
     gw.vm.network "private_network", ip: GATEWAY_IP,
                   virtualbox__intnet: "wgzk-internal"
     gw.vm.provision "shell", path: "vagrant/03-gateway.sh",
-                    env: { "PEER_IP" => CLIENT_IP }
+                    env: { "WGZK_VARIANT" => VARIANT, "WGZK_EPOCH" => EPOCH }
   end
 
   # ── CLIENT ───────────────────────────────────────────────────────────────────
@@ -55,7 +65,8 @@ Vagrant.configure("2") do |config|
     cl.vm.network "private_network", ip: CLIENT_IP,
                   virtualbox__intnet: "wgzk-internal"
     cl.vm.provision "shell", path: "vagrant/03-client.sh",
-                    env: { "PEER_IP" => GATEWAY_IP }
+                    env: { "PEER_IP" => GATEWAY_IP,
+                           "WGZK_VARIANT" => VARIANT, "WGZK_EPOCH" => EPOCH }
     cl.vm.provision "shell", path: "vagrant/04-test.sh"
   end
 end

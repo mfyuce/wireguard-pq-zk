@@ -4,8 +4,8 @@
 set -euo pipefail
 
 KEYS_DIR="$(dirname "$0")/keys"
-GENPK="$(dirname "$0")/../userspace/gen-pk/target/release/gen-pk"
-GENMLKEM="$(dirname "$0")/../userspace/gen-mlkem/target/release/gen-mlkem"
+GENPK="$(dirname "$0")/artifacts/gen-pk"
+GENMLKEM="$(dirname "$0")/artifacts/gen-mlkem"
 
 mkdir -p "$KEYS_DIR"
 
@@ -27,7 +27,7 @@ echo "    client  pubkey: $(cat $KEYS_DIR/public_left)"
 
 echo "==> Generating ZK keys (Ristretto255 Schnorr++)..."
 if [ ! -f "$GENPK" ]; then
-    echo "ERROR: $GENPK not found. Build: cd userspace/gen-pk && cargo build --release"
+    echo "ERROR: $GENPK not found. Build: bash vagrant/build-artifacts.sh"
     exit 1
 fi
 "$GENPK" | grep -E "WGZK_(SK|PK)_HEX" > "$KEYS_DIR/zk.env"
@@ -36,7 +36,7 @@ echo "    ZK PK: $WGZK_PK_HEX"
 
 echo "==> Generating ML-KEM-768 keypair + TLS cert..."
 if [ ! -f "$GENMLKEM" ]; then
-    echo "ERROR: $GENMLKEM not found. Build: cd userspace/gen-mlkem && cargo build --release"
+    echo "ERROR: $GENMLKEM not found. Build: bash vagrant/build-artifacts.sh"
     exit 1
 fi
 "$GENMLKEM" > "$KEYS_DIR/mlkem.env"

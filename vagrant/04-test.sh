@@ -1,29 +1,48 @@
 #!/bin/bash
-# End-to-end test: ping from client dummy (10.10.10.10) to gateway dummy (10.20.10.10)
-# Runs on the CLIENT VM after provisioning.
+# End-to-end test on the CLIENT VM: two connections, each with its own key.
+# Pings the tunnel address of the gateway; the first packet of a connection
+# triggers the handshake.
 set -euo pipefail
 
+IFACE="wg1l"
+GW_ADDR="fd57:475a:4b00::1"
+
+session() {
+    wg show "$IFACE" public-key
+    ip -6 -o addr show dev "$IFACE" scope global | awk '{print $4}'
+}
+
+fail() {
+    echo "TEST FAILED: $*"
+    echo "── Client daemon log ────────────────────────────────"
+    journalctl -u wgzk --no-pager -n 30
+    exit 1
+}
+
 echo ""
 echo "══════════════════════════════════════════════════════"
-echo "  WireGuard ZK Handshake — End-to-End Test"
+echo "  wgzk protocol R1: end-to-end test"
 echo "══════════════════════════════════════════════════════"
+sleep 3   # let the daemons settle
 
-# Give daemons a moment to settle
-sleep 3
+echo "── Connection 1 ─────────────────────────────────────"
+FIRST="$(session)"
+echo "$FIRST"
+ping -6 -c 5 -W 5 "$GW_ADDR" || fail "no reply on connection 1"
 
-echo ""
-echo "── Ping test (5 packets) ────────────────────────────"
-ping -I 10.10.10.10 10.20.10.10 -c 5 -W 5
+echo "── Connection 2 (new key, new address) ──────────────"
+wg-zk-daemon new-connection --iface "$IFACE"
+SECOND="$(session)"
+echo "$SECOND"
+[ "$FIRST" != "$SECOND" ] || fail "key and address did not change"
+ping -6 -c 5 -W 5 "$GW_ADDR" || fail "no reply on connection 2"
 
-echo ""
 echo "── Client daemon log ────────────────────────────────"
 journalctl -u wgzk --no-pager -n 20
-
-echo ""
 echo "── WireGuard status ─────────────────────────────────"
-wg show wg1l
+wg show "$IFACE"
 
 echo ""
 echo "══════════════════════════════════════════════════════"
-echo "  TEST PASSED — Schnorr++ ZK tunnel working"
+echo "  TEST PASSED"
 echo "══════════════════════════════════════════════════════"

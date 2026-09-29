@@ -4,7 +4,7 @@
 set -euo pipefail
 
 KERNEL="6.8.0-59-generic"
-KO_SRC="/vagrant/wireguard-6.8/wireguard.ko"
+KO_SRC="/vagrant/vagrant/artifacts/wireguard.ko"
 KO_DST="/lib/modules/${KERNEL}/extra/wireguard.ko"
 
 echo "==> Kernel: $(uname -r)"
@@ -16,11 +16,15 @@ fi
 
 if [ ! -f "$KO_SRC" ]; then
     echo "ERROR: $KO_SRC not found."
-    echo "       Build on host: cd wireguard-6.8 && make -C /lib/modules/${KERNEL}/build M=\$(pwd) modules"
+    echo "       Build on host: bash vagrant/build-artifacts.sh"
     exit 1
 fi
 
 # Remove previously loaded wireguard (stock or old custom)
+systemctl stop wgzk 2>/dev/null || true
+for dev in $(ip -o link show type wireguard 2>/dev/null | awk -F': ' '{print $2}'); do
+    ip link del "$dev"
+done
 rmmod wireguard 2>/dev/null || true
 
 # Load dependencies (order matters — same as README)
@@ -39,8 +43,10 @@ sleep 1
 echo "==> lsmod:"
 lsmod | grep wireguard || echo "(wireguard not in lsmod)"
 
-if grep -q wgzk /proc/net/genetlink 2>/dev/null || \
-   genl ctrl list 2>/dev/null | grep -q wgzk; then
+# The list is read completely before it is searched: "genl | grep -q" fails
+# under pipefail whenever grep finds the name before genl has finished writing.
+FAMILIES="$(genl ctrl list 2>/dev/null || true)"
+if grep -q 'Name: wgzk' <<<"$FAMILIES"; then
     echo "==> wireguard.ko loaded OK — wgzk genl registered"
 else
     echo "ERROR: wgzk genl family not found"
