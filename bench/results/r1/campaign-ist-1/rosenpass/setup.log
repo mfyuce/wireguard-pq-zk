@@ -1,0 +1,1210 @@
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29  2026 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 17:30 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 17:30 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 17:30 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1312 0 1293 238950 476 0 13 3 0 0
+100
+1790703065.939958565
+32805799758
+7010639 9923715 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  1426 0 1403 227160 431 0 8 3 0 0
+100
+1790703066.400551488
+35244729375
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1314 0 1297 240541 476 0 13 3 0 0
+100
+1790703081.964346436
+32906159867
+7010639 9923715 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  1429 0 1404 228751 431 0 8 3 0 0
+100
+1790703082.421740547
+35339219646
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1402 0 1315 253111 477 0 15 3 0 0
+100
+1790703209.222519433
+34294550939
+809086317 93861810 377
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  1786 0 1742 240649 459 0 10 3 0 0
+100
+1790703209.605278743
+42892766002
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29  2026 pqpk
+-rw-r--r-- 1 root root     45 Sep 29  2026 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 17:45 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 17:45 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1643 0 1517 327383 632 0 21 4 0 0
+100
+1790703960.953914338
+40822370315
+6874437 9307482 14
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  2317 0 2166 314393 580 0 15 4 0 0
+100
+1790703961.393476046
+54899147790
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1646 0 1519 328955 632 0 21 4 0 0
+100
+1790703976.795349971
+40924697727
+6874437 9307482 14
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  2320 0 2168 315958 580 0 15 4 0 0
+100
+1790703977.153547741
+54989134536
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1735 0 1534 341503 633 0 22 4 0 0
+100
+1790704103.830659168
+42320610688
+816017299 91092114 341
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  2683 0 2491 327836 615 0 16 4 0 0
+100
+1790704104.200244448
+62550956573
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29  2026 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:00 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:00 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:00 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1980 0 1742 415647 765 0 29 5 0 0
+100
+1790704854.136407134
+48933415423
+7247625 9943934 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  3224 0 2916 401409 743 0 22 5 0 0
+100
+1790704854.475592547
+74679525761
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  1982 0 1745 417203 765 0 29 5 0 0
+100
+1790704869.812924635
+49031338829
+7247625 9943934 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  3226 0 2918 402966 744 0 22 5 0 0
+100
+1790704870.167588571
+74769096130
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2068 0 1762 429718 766 0 30 5 0 0
+100
+1790704996.529843732
+50418103298
+806945843 92777410 345
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  3576 0 3251 414831 768 0 24 5 0 0
+100
+1790704996.876490533
+82259722109
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:15 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:15 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:15 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:15 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2314 0 1960 503293 905 0 37 6 0 0
+100
+1790705741.119690891
+56937219315
+7013700 8870094 15
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4106 0 3683 487816 912 0 28 6 0 0
+100
+1790705741.419436611
+94336933218
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2317 0 1962 504847 906 0 37 6 0 0
+100
+1790705756.771264575
+57034044463
+7013700 8870094 15
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4108 0 3685 489372 913 0 28 6 0 0
+100
+1790705757.101518027
+94427321755
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2403 0 1980 517387 909 0 39 6 0 0
+100
+1790705883.775157308
+58430045325
+808693209 92593379 346
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4467 0 4014 501258 938 0 30 7 0 0
+100
+1790705884.084992578
+101939904380
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:30 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:30 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:30 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:30 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2645 0 2173 591403 1065 0 45 7 0 0
+100
+1790706632.946014376
+64959342360
+7069206 10409702 16
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4998 0 4441 574741 1060 0 35 8 0 0
+100
+1790706633.346899973
+114010643613
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2648 0 2175 592975 1065 0 45 7 0 0
+100
+1790706648.786619576
+65058450118
+7069206 10409702 16
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5001 0 4443 576314 1060 0 35 8 0 0
+100
+1790706649.188026898
+114101002284
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2736 0 2191 605545 1067 0 47 7 0 0
+100
+1790706776.071280306
+66464068858
+808066134 94274273 343
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5357 0 4778 588222 1088 0 36 8 0 0
+100
+1790706776.446168412
+121635311813
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:45 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:45 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 18:45 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 18:45 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2974 0 2398 680123 1206 0 53 8 0 0
+100
+1790707530.700260286
+72999418630
+7134539 10113858 19
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5887 0 5207 662229 1221 0 41 9 0 0
+100
+1790707531.055011277
+133700838270
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  2976 0 2401 681686 1206 0 53 8 0 0
+100
+1790707546.445601791
+73098873355
+7134539 10113858 19
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5890 0 5208 663790 1222 0 41 9 0 0
+100
+1790707546.783709213
+133795862527
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3063 0 2420 694223 1208 0 54 8 0 0
+100
+1790707673.411701248
+74509295709
+811508185 94586680 343
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6238 0 5547 675664 1259 0 42 9 0 0
+100
+1790707673.785290026
+141336258777
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:00 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:00 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:00 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:00 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3624 128 2965 767771 1570 0 64 10 0 0
+100
+1790708429.159681452
+90177838954
+7108659 8478471 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6766 0 5978 749748 1418 0 48 10 0 0
+100
+1790708429.526540167
+153493027702
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3628 128 2968 769336 1571 0 64 10 0 0
+100
+1790708444.933092054
+90279298174
+7108659 8478471 18
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6769 0 5980 751316 1418 0 48 10 0 0
+100
+1790708445.330886688
+153593419806
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3714 128 2986 781870 1571 0 65 10 0 0
+100
+1790708571.831329978
+91683233977
+813500020 90098140 352
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  7128 0 6302 763202 1442 0 49 10 0 0
+100
+1790708572.228495711
+161071859391
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:15 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:15 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:15 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:15 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3955 128 3188 856242 1706 0 72 11 0 0
+100
+1790709324.453410057
+98307580096
+6959062 9534346 14
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  7656 0 6731 836989 1582 0 55 11 0 0
+100
+1790709324.830206261
+173233858434
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  3958 128 3190 857809 1707 0 72 11 0 0
+100
+1790709340.241055108
+98400679046
+6959062 9534346 14
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  7659 0 6734 838555 1583 0 55 11 0 0
+100
+1790709340.608023240
+173328198547
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4045 128 3212 870342 1711 0 74 11 0 0
+100
+1790709467.203428758
+99826788540
+809403792 92962031 357
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  8011 0 7073 850446 1608 0 56 11 0 0
+100
+1790709467.637453613
+180835659049
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:30 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:30 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:30 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:30 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4297 128 3410 944820 1849 0 80 11 0 0
+100
+1790710220.951632989
+106477476199
+6929712 10255987 17
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  8534 0 7510 924363 1743 0 62 12 0 0
+100
+1790710221.365896475
+192918172506
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4300 128 3413 946389 1849 0 80 11 0 0
+100
+1790710236.750844933
+106577583058
+6929712 10255987 17
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  8537 0 7513 925927 1744 0 62 12 0 0
+100
+1790710237.121294158
+193008487659
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4387 128 3430 958933 1851 0 81 11 0 0
+100
+1790710363.773731287
+107972898342
+810260382 93763854 345
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  8895 0 7846 937819 1773 0 63 12 0 0
+100
+1790710364.213042275
+200511260225
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh gateway keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:45 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:45 wgpk
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/11-rosenpass.sh client keys
+total 516
+-rw------- 1 root root 524160 Sep 29 19:45 pqpk
+-rw-r--r-- 1 root root     45 Sep 29 19:45 wgpk
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/11-rosenpass.sh gateway start
+active
+interface: rosenpass0
+  public key: PmOm9Xge6vD5IBxHK8WrApaC/nQ09BUYIylI221KtQI=
+  private key: (hidden)
+  listening port: 10000
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/11-rosenpass.sh client prepare
+==> stock wireguard loaded; the exchange is started by the measurement
+[exit 0]
+
+$ [gateway] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [gateway] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] uname -r
+6.8.0-59-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+9BD2B2AF854D86752147554
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+1.0.0
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465
+[exit 0]
+
+$ [client] rosenpass --version
+rosenpass 0.2.3
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/rosenpass | cut -d' ' -f1
+76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+ping: connect: Network is unreachable
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4639 128 3625 1033891 1994 0 87 12 0 0
+100
+1790711122.264407789
+114539992208
+7087595 10146441 17
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  9876 374 8697 1010404 2310 0 74 13 0 0
+100
+1790711122.641257861
+226466526244
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4642 128 3627 1035455 1994 0 87 12 0 0
+100
+1790711138.021668499
+114637788037
+7087595 10146441 17
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  9878 374 8699 1011968 2311 0 74 13 0 0
+100
+1790711138.391935716
+226560829061
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat; for p in $(pidof rosenpass); do for f in /proc/$p/task/*/schedstat; do cat $f; done; done 2>/dev/null
+cpu  4730 128 3646 1048000 1999 0 89 12 0 0
+100
+1790711265.091127930
+116052812028
+816152234 92078314 340
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  10238 374 9038 1023843 2352 0 76 13 0 0
+100
+1790711265.527982744
+234175591310
+[exit 0]

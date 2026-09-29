@@ -1,0 +1,816 @@
+{
+  "blocks": [
+    {
+      "block": 1,
+      "commit": "add802564a493a66501661fbbdf32701bad05784",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005897831375130616,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0024966936014528484
+          },
+          "used": {
+            "busy_s": 7.553546356000005,
+            "irq_ticks_s": 0.020000000000000004,
+            "ticks_s": 6.969999999999995
+          },
+          "window_s": 127.18353819847107
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.0062629605588848765,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003744292799971782
+          },
+          "used": {
+            "busy_s": 1.3883910719999975,
+            "daemon_s": 0.802075678,
+            "irq_ticks_s": 0.01999999999999999,
+            "ticks_s": 1.0800000000000018
+          },
+          "window_s": 127.2581729888916
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.0,
+          0.18,
+          0.37
+        ],
+        "loadavg_before": [
+          0.09,
+          0.31,
+          0.44
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.2,
+      "started": "2026-09-29T17:31:22Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 2,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005709792912241066,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031725743879219043
+          },
+          "used": {
+            "busy_s": 7.561822036999999,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.869999999999997
+          },
+          "window_s": 127.04669666290283
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006459478428983407,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003156279584684001
+          },
+          "used": {
+            "busy_s": 1.3959129610000005,
+            "daemon_s": 0.809142862,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 1.0500000000000043
+          },
+          "window_s": 127.0353090763092
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.05,
+          0.15,
+          0.23
+        ],
+        "loadavg_before": [
+          0.16,
+          0.18,
+          0.26
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.0,
+      "started": "2026-09-29T17:46:17Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 3,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.0057080290999308525,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0025490702622563495
+          },
+          "used": {
+            "busy_s": 7.490625979000001,
+            "irq_ticks_s": 0.01999999999999999,
+            "ticks_s": 6.850000000000001
+          },
+          "window_s": 126.70890212059021
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006246502520976102,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003189483891612069
+          },
+          "used": {
+            "busy_s": 1.3867644689999992,
+            "daemon_s": 0.7996982180000001,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 1.0399999999999991
+          },
+          "window_s": 126.71691918373108
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.01,
+          0.06,
+          0.12
+        ],
+        "loadavg_before": [
+          0.0,
+          0.07,
+          0.14
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 126.7,
+      "started": "2026-09-29T18:01:10Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 4,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005763810027339532,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.002550681853535774
+          },
+          "used": {
+            "busy_s": 7.512582625000007,
+            "irq_ticks_s": 0.019999999999999962,
+            "ticks_s": 6.910000000000011
+          },
+          "window_s": 126.98347473144531
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006186288364082501,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003194566954900037
+          },
+          "used": {
+            "busy_s": 1.396000862000001,
+            "daemon_s": 0.801679509,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 1.0600000000000023
+          },
+          "window_s": 127.00389266014099
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.23,
+          0.2,
+          0.15
+        ],
+        "loadavg_before": [
+          0.15,
+          0.16,
+          0.13
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.0,
+      "started": "2026-09-29T18:15:57Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 5,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005704055744469127,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031563411022668543
+          },
+          "used": {
+            "busy_s": 7.534309528999998,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.920000000000002
+          },
+          "window_s": 127.25814151763916
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006256563835782624,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031564450463010766
+          },
+          "used": {
+            "busy_s": 1.4056187400000084,
+            "daemon_s": 0.800996928,
+            "irq_ticks_s": 0.019999999999999962,
+            "ticks_s": 1.0600000000000023
+          },
+          "window_s": 127.28466057777405
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.11,
+          0.18,
+          0.16
+        ],
+        "loadavg_before": [
+          0.24,
+          0.17,
+          0.15
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.3,
+      "started": "2026-09-29T18:30:49Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 6,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.006041457271803232,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.002543122130090978
+          },
+          "used": {
+            "busy_s": 7.540396250000015,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.8799999999999955
+          },
+          "window_s": 127.00158071517944
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006316454060853528,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031755424696282646
+          },
+          "used": {
+            "busy_s": 1.410422354000005,
+            "daemon_s": 0.8043736459999999,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 1.0700000000000003
+          },
+          "window_s": 126.96609950065613
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.05,
+          0.12,
+          0.14
+        ],
+        "loadavg_before": [
+          0.15,
+          0.13,
+          0.15
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.0,
+      "started": "2026-09-29T18:45:46Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 7,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.0063521832506177895,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003163686683274971
+          },
+          "used": {
+            "busy_s": 7.47843958499999,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.819999999999993
+          },
+          "window_s": 126.89760899543762
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.0064322943742845095,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.004437848095026958
+          },
+          "used": {
+            "busy_s": 1.403935802999996,
+            "daemon_s": 0.806391361,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 1.0499999999999972
+          },
+          "window_s": 126.89823794364929
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.19,
+          0.17,
+          0.16
+        ],
+        "loadavg_before": [
+          0.12,
+          0.14,
+          0.15
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 126.9,
+      "started": "2026-09-29T19:00:45Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 8,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.00597928806849105,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003802807445328436
+          },
+          "used": {
+            "busy_s": 7.5074605019999865,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.9199999999999875
+          },
+          "window_s": 127.0294303894043
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.005896949849526103,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031670334893819357
+          },
+          "used": {
+            "busy_s": 1.426109494000002,
+            "daemon_s": 0.80244473,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 1.1099999999999994
+          },
+          "window_s": 126.96237373352051
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.15,
+          0.19,
+          0.18
+        ],
+        "loadavg_before": [
+          0.14,
+          0.17,
+          0.18
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.0,
+      "started": "2026-09-29T19:15:40Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 9,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.0057323308599240156,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0038082186673085903
+          },
+          "used": {
+            "busy_s": 7.502772566000004,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 6.9199999999999875
+          },
+          "window_s": 127.09174799919128
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.006336193167964502,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.003797657761670122
+          },
+          "used": {
+            "busy_s": 1.3953152839999916,
+            "daemon_s": 0.8033306699999999,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 1.0500000000000114
+          },
+          "window_s": 127.02288627624512
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.11,
+          0.11,
+          0.14
+        ],
+        "loadavg_before": [
+          0.05,
+          0.12,
+          0.15
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.1,
+      "started": "2026-09-29T19:30:37Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 10,
+      "commit": "88d086a81f2d493401c40e41e2788cd53234ab56",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005987222685027471,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0025395732070342446
+          },
+          "used": {
+            "busy_s": 7.614762248999995,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 7.009999999999991
+          },
+          "window_s": 127.13604688644409
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.0062063979091722,
+            "daemon_s": 0.0,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031731403949607417
+          },
+          "used": {
+            "busy_s": 1.4150239909999982,
+            "daemon_s": 0.809064639,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 1.0900000000000034
+          },
+          "window_s": 127.06945943832397
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.04,
+          0.07,
+          0.09
+        ],
+        "loadavg_before": [
+          0.04,
+          0.08,
+          0.09
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        },
+        "gateway": {
+          "daemon_sha256": "85305b3d70b100d91b5f8a978d7776f426ac77351683cf68e6279ed7fd249465",
+          "kernel": "6.8.0-59-generic",
+          "module_srcversion": "9BD2B2AF854D86752147554",
+          "module_version": "1.0.0",
+          "rosenpass": "rosenpass 0.2.3",
+          "rosenpass_sha256": "76eab37359084d11c4abd4f3ed9d0e1994db5b6b3bdf7b4744f082ec410a103b"
+        }
+      },
+      "seconds": 127.1,
+      "started": "2026-09-29T19:45:38Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    }
+  ],
+  "cold_start_ms": {
+    "max": 33.349846,
+    "mean": 26.592333224999997,
+    "median": 26.012037,
+    "min": 24.237728,
+    "n": 1000,
+    "p25": 25.51570425,
+    "p75": 27.6035375,
+    "p95": 29.252148849999998,
+    "p99": 30.786600249999996
+  },
+  "cpu": {
+    "client": {
+      "daemon_ms_per_handshake": null,
+      "handshakes": 1000,
+      "interrupt_ticks_idle_share": 0.0,
+      "interrupt_ticks_ms_per_handshake": 0.14,
+      "machine_idle_share": 0.09932959496408234,
+      "machine_ms_per_handshake": 67.81752520891939,
+      "machine_ticks_idle_share": 0.054778277096035534,
+      "machine_ticks_ms_per_handshake": 65.2864644009768,
+      "window_s": 1270.3
+    },
+    "gateway": {
+      "daemon_idle_share": 0.0,
+      "daemon_ms_per_handshake": 8.039198241000001,
+      "handshakes": 1000,
+      "interrupt_ticks_idle_share": 0.0,
+      "interrupt_ticks_ms_per_handshake": 0.15000000000000005,
+      "machine_idle_share": 0.567018270530568,
+      "machine_ms_per_handshake": 6.071917131295384,
+      "machine_ticks_idle_share": 0.40742363788263664,
+      "machine_ticks_ms_per_handshake": 6.316864020171106,
+      "window_s": 1270.2
+    }
+  },
+  "exchange_ms": {
+    "max": 32.429846,
+    "mean": 25.882590225,
+    "median": 25.253158,
+    "min": 23.645416,
+    "n": 1000,
+    "p25": 24.83159525,
+    "p75": 26.9700205,
+    "p95": 28.465175849999998,
+    "p99": 30.077180249999994
+  },
+  "failed": 0,
+  "first_rtt_ms": {
+    "max": 2.56,
+    "mean": 1.7230150000000002,
+    "median": 1.73,
+    "min": 0.975,
+    "n": 1000,
+    "p25": 1.64,
+    "p75": 1.8225,
+    "p95": 2.0,
+    "p99": 2.1602
+  },
+  "handshake_ms": {
+    "max": 1.39,
+    "mean": 0.7097429999999999,
+    "median": 0.711,
+    "min": -0.06000000000000005,
+    "n": 1000,
+    "p25": 0.6099999999999999,
+    "p75": 0.82325,
+    "p95": 1.0001499999999997,
+    "p99": 1.18024
+  },
+  "host_load": {
+    "max": 0.24,
+    "min": 0.0,
+    "threads": 8
+  },
+  "reset_ms": {
+    "n": 0
+  },
+  "steady_rtt_ms": {
+    "max": 1.32,
+    "mean": 1.013272,
+    "median": 1.02,
+    "min": 0.702,
+    "n": 1000,
+    "p25": 0.955,
+    "p75": 1.07,
+    "p95": 1.14,
+    "p99": 1.2201999999999997
+  },
+  "succeeded": 1000,
+  "system": "rosenpass",
+  "trials": 1000
+}

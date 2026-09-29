@@ -1,0 +1,1160 @@
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 36565
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4230 59 2472 71937 3022 0 4 2 0 0
+100
+1790703222.275728189
+69863631069
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4281 59 2470 63536 2952 0 3 2 0 0
+100
+1790703222.628984786
+69929478894
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4232 59 2472 73507 3022 0 4 2 0 0
+100
+1790703238.081097331
+69950533240
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4283 59 2472 65112 2952 0 3 2 0 0
+100
+1790703238.512958942
+70026236187
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4236 59 2484 85487 3039 0 4 2 0 0
+100
+1790703358.748721973
+70478247183
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4464 59 2779 76524 2989 0 4 2 0 0
+100
+1790703359.091672568
+75739682937
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 59753
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4257 59 2498 160919 3059 0 4 2 0 0
+100
+1790704116.597515471
+73014329513
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4487 59 2799 151928 3028 0 5 2 0 0
+100
+1790704116.932538029
+78354932191
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4261 59 2499 162490 3059 0 4 2 0 0
+100
+1790704132.421837000
+73103055248
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4488 59 2801 153496 3028 0 5 2 0 0
+100
+1790704132.735364439
+78447445191
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4264 59 2506 174475 3069 0 7 2 0 0
+100
+1790704253.040835292
+73606705715
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4681 59 3102 164918 3064 0 6 2 0 0
+100
+1790704253.443997842
+84182304725
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 43632
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4285 59 2527 249642 3085 0 7 3 0 0
+100
+1790705008.258356040
+76183401142
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4710 59 3121 240074 3091 0 6 3 0 0
+100
+1790705008.575788451
+86720618754
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4287 59 2528 251200 3086 0 7 3 0 0
+100
+1790705023.950079698
+76272498699
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4713 59 3121 241628 3091 0 6 3 0 0
+100
+1790705024.235724420
+86814240185
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4291 59 2534 263184 3092 0 8 3 0 0
+100
+1790705144.544633583
+76781944465
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4900 59 3432 253024 3137 0 6 3 0 0
+100
+1790705144.855356333
+92587374817
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 59142
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4309 59 2555 337896 3117 0 10 4 0 0
+100
+1790705895.202254103
+79278129910
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4925 59 3449 327712 3172 0 6 4 0 0
+100
+1790705895.529820765
+95212831111
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4311 59 2558 339451 3118 0 10 4 0 0
+100
+1790705910.883480044
+79378264088
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4928 59 3450 329266 3173 0 6 4 0 0
+100
+1790705911.197548237
+95313786575
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4313 59 2566 351431 3125 0 13 4 0 0
+100
+1790706031.425244910
+79868154128
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5110 59 3756 340657 3219 0 6 5 0 0
+100
+1790706031.727103335
+101073706531
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 45324
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4333 59 2585 426891 3143 0 13 4 0 0
+100
+1790706789.511158696
+82371871337
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5136 59 3777 416114 3246 0 7 5 0 0
+100
+1790706789.931161294
+103653958925
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4335 59 2586 428463 3143 0 13 4 0 0
+100
+1790706805.337260669
+82461517557
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5138 59 3778 417679 3246 0 7 5 0 0
+100
+1790706805.696137681
+103748413651
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4336 59 2595 440463 3150 0 15 4 0 0
+100
+1790706926.089712070
+82963096493
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5313 59 4087 429096 3294 0 9 5 0 0
+100
+1790706926.502444631
+109507251574
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 53006
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4357 59 2612 516107 3170 0 15 5 0 0
+100
+1790707686.166102303
+85589919613
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5339 59 4108 504728 3325 0 10 5 0 0
+100
+1790707686.507981787
+112092523835
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4359 59 2614 517670 3171 0 15 5 0 0
+100
+1790707701.909524265
+85680489232
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5342 59 4108 506296 3325 0 10 5 0 0
+100
+1790707702.293823641
+112182125053
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4362 59 2623 529670 3178 0 17 5 0 0
+100
+1790707822.647097201
+86182503115
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5530 59 4420 517693 3378 0 11 6 0 0
+100
+1790707823.016432902
+117976602854
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 53297
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4381 59 2639 605526 3194 0 17 5 0 0
+100
+1790708584.715362166
+88735684016
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5558 59 4439 593528 3405 0 11 6 0 0
+100
+1790708585.078651232
+120636832473
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4383 59 2640 607089 3194 0 17 5 0 0
+100
+1790708600.462061352
+88823651954
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5561 59 4440 595086 3405 0 11 6 0 0
+100
+1790708600.776686055
+120728929714
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4385 59 2646 619063 3201 0 18 5 0 0
+100
+1790708720.944072592
+89323321693
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5744 59 4738 606477 3451 0 11 6 0 0
+100
+1790708721.306526976
+126501182477
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 35277
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4407 59 2661 694666 3225 0 18 6 0 0
+100
+1790709480.646729060
+91921939238
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5773 59 4756 682044 3487 0 12 7 0 0
+100
+1790709481.016236713
+129346976795
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4409 59 2663 696228 3226 0 18 6 0 0
+100
+1790709496.381347021
+92010114140
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5776 59 4757 683607 3487 0 12 7 0 0
+100
+1790709496.762550158
+129443781954
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4413 59 2669 708224 3235 0 20 6 0 0
+100
+1790709617.054082111
+92480833997
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5970 59 5058 694984 3546 0 12 7 0 0
+100
+1790709617.383978246
+135262555931
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 58907
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4433 59 2685 783819 3252 0 20 7 0 0
+100
+1790710376.549303255
+95024592005
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  5998 59 5073 770547 3572 0 13 8 0 0
+100
+1790710376.960744113
+138118761225
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4436 59 2688 785386 3252 0 20 7 0 0
+100
+1790710392.327306890
+95113437072
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6000 59 5075 772111 3572 0 13 8 0 0
+100
+1790710392.720399206
+138218621891
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4438 59 2696 797381 3259 0 22 7 0 0
+100
+1790710513.030627386
+95618730082
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6189 59 5383 783513 3626 0 14 8 0 0
+100
+1790710513.439153161
+143991277702
+[exit 0]
+
+$ [gateway] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the gateway are in place
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1 keys
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+==> keys of the client are in place
+[exit 0]
+
+$ [gateway] bash /vagrant/vagrant/pqwireguard/provision.sh gateway 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 51921
+
+peer: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /vagrant/vagrant/keys/pqwireguard/client.pubkey
+  preshared key: (hidden)
+  allowed ips: fd57:475a:4b00::2/128
+[exit 0]
+
+$ [client] bash /vagrant/vagrant/pqwireguard/provision.sh client 192.168.101.1
+==> kernel 4.15.0-91-generic, module 0.0.20191219-158-gfc6f000-dirty
+interface: wg0
+  public key fingerprint: 2+S9CrcyLnazSqKFvkgVJpSYrToqHW8EaOqgzVCJ41I=
+  public key path: /wg_config/pubkey
+  private key fingerprint: (hidden)
+  private key path: (hidden)
+  listening port: 60047
+
+peer: vPth5cixzQdlLQXBUnh/xb965dvdq2CJmp6BLEuZ4ws=
+  public key path: /vagrant/vagrant/keys/pqwireguard/gateway.pubkey
+  preshared key: (hidden)
+  endpoint: 192.168.101.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [gateway] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [gateway] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [gateway] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] uname -r
+4.15.0-91-generic
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/srcversion
+A0FA22E51AEB9EF6F14C4AF
+[exit 0]
+
+$ [client] cat /sys/module/wireguard/version 2>/dev/null || true
+0.0.20191219-158-gfc6f000-dirty
+[exit 0]
+
+$ [client] sha256sum /usr/local/bin/wg-zk-daemon 2>/dev/null | cut -d' ' -f1
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.101.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 >/dev/null || true
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4457 59 2710 873520 3282 0 22 8 0 0
+100
+1790711278.031509281
+98187778028
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6216 59 5401 859639 3659 0 14 9 0 0
+100
+1790711278.376878295
+146559710162
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4459 59 2711 875081 3282 0 22 8 0 0
+100
+1790711293.754131183
+98278217771
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6219 59 5404 861206 3659 0 14 9 0 0
+100
+1790711294.162166529
+146653123570
+[exit 0]
+
+$ [gateway] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  4462 59 2719 887081 3289 0 24 8 0 0
+100
+1790711414.472820877
+98765657632
+[exit 0]
+
+$ [client] head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat
+cpu  6397 59 5708 872614 3707 0 15 9 0 0
+100
+1790711414.860729500
+152374162012
+[exit 0]
