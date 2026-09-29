@@ -17,6 +17,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rig as rigmod  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DEFAULT = ["wireguard", "wireguard-psk", "rosenpass", "pq-wireguard", "wgzk-zk", "wgzk-zkpq"]
 
@@ -47,7 +50,7 @@ def main():
             if blocks_done(a.out, system) >= block:
                 continue
             if a.max_load is not None:
-                load = float(open("/proc/loadavg").read().split()[0])
+                load = rigmod.Bed("pq" if system == "pq-wireguard" else "wgzk").host_load()["loadavg"][0]
                 if load > a.max_load:
                     sys.exit(f"host load {load} is above {a.max_load}; block {block} of {system} "
                              "not started. Run the same command again to continue.")

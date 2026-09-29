@@ -5,14 +5,17 @@
 #   10-stock.sh gateway|client [psk]
 #
 # With "psk" both sides use the preshared key in vagrant/keys/stock.psk, which
-# is created if it does not exist.
+# the gateway creates if it does not exist.
+#
+# Environment: GW_IP, the address at which the client reaches the gateway
+# (default 192.168.100.1).
 set -euo pipefail
 
 ROLE="${1:?gateway or client}"
 WITH_PSK="${2:-}"
 KEYS="/vagrant/vagrant/keys"
 IFACE="wg0"
-GW_IP="192.168.100.1"
+GW_IP="${GW_IP:-192.168.100.1}"
 GW_PORT=51921
 GW_ADDR="fd57:475a:4b00::1"
 CL_ADDR="fd57:475a:4b00::2"
@@ -37,7 +40,10 @@ echo "==> stock wireguard loaded, srcversion $LOADED"
 
 PSK=()
 if [ "$WITH_PSK" = "psk" ]; then
-    [ -f "$KEYS/stock.psk" ] || (umask 077; wg genpsk > "$KEYS/stock.psk")
+    if [ ! -f "$KEYS/stock.psk" ]; then
+        [ "$ROLE" = "gateway" ] || { echo "ERROR: $KEYS/stock.psk missing; configure the gateway first"; exit 1; }
+        (umask 077; wg genpsk > "$KEYS/stock.psk")
+    fi
     PSK=(preshared-key "$KEYS/stock.psk")
 fi
 

@@ -8,6 +8,8 @@
 #
 # The exchange of the client is started by the measurement
 # (bench/guest/rosenpass_trials.py), because its duration is what is measured.
+# The gateway listens on all its addresses; the measurement tells the client
+# where the gateway is.
 set -euo pipefail
 
 ROLE="${1:?gateway or client}"
@@ -17,7 +19,6 @@ ART="/vagrant/vagrant/artifacts/rosenpass-${VERSION}"
 PUB="/vagrant/vagrant/keys/rosenpass"
 SECRET="/etc/rosenpass/${ROLE}.secret"
 DEV="rosenpass0"
-GW_IP="192.168.100.1"
 RP_PORT=9999
 GW_ADDR="fd57:475a:4b00::1"
 CL_ADDR="fd57:475a:4b00::2"
@@ -60,7 +61,7 @@ case "$ROLE/$ACTION" in
 Description=Rosenpass key exchange (gateway)
 After=network.target
 [Service]
-ExecStart=/usr/local/bin/rp exchange $SECRET dev $DEV listen ${GW_IP}:${RP_PORT} peer $PUB/client.public allowed-ips ${CL_ADDR}/128
+ExecStart=/usr/local/bin/rp exchange $SECRET dev $DEV listen 0.0.0.0:${RP_PORT} peer $PUB/client.public allowed-ips ${CL_ADDR}/128
 Restart=on-failure
 RestartSec=1
 [Install]

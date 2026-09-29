@@ -52,8 +52,10 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rig as rigmod  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GW_IP = "192.168.100.1"
 GW_PORT = 51921
 
 SYSTEMS = {
@@ -64,34 +66,24 @@ SYSTEMS = {
     "wgzk-zk-rekey":   {"kind": "wgzk-rekey", "iface": "wg1l", "variant": "zk-only"},
     "wgzk-zkpq-rekey": {"kind": "wgzk-rekey", "iface": "wg1l", "variant": "zk-pq"},
     "rosenpass":       {"kind": "rosenpass", "iface": "rosenpass0"},
-    "pq-wireguard":    {"kind": "pqwireguard", "iface": "wg0", "vagrant": "vagrant/pqwireguard",
-                        "machines": {"gateway": "pq-gateway", "client": "pq-client"},
-                        "gw_ip": "192.168.101.1"},
+    "pq-wireguard":    {"kind": "pqwireguard", "iface": "wg0"},
 }
 
 
 class Rig:
+    """The machines of the system under test, and the log of what was done to them."""
+
     def __init__(self, outdir, spec):
-        self.sshcfg = os.path.join(outdir, "ssh.cfg")
-        self.names = spec.get("machines", {})
-        cfg = subprocess.run(["vagrant", "ssh-config"], cwd=os.path.join(ROOT, spec.get("vagrant", ".")),
-                             capture_output=True, text=True)
-        if cfg.returncode != 0:
-            sys.exit("vagrant ssh-config failed; are both machines up?\n" + cfg.stderr)
-        with open(self.sshcfg, "w") as f:
-            f.write(cfg.stdout + "\nHost *\n  LogLevel ERROR\n")
+        self.bed = rigmod.Bed("pq" if spec["kind"] == "pqwireguard" else "wgzk", workdir=outdir)
         self.log = open(os.path.join(outdir, "setup.log"), "a")
 
-    def ssh(self, vm, script):
-        return ["ssh", "-F", self.sshcfg, self.names.get(vm, vm), "sudo bash -c " + shlex.quote(script)]
-
     def must(self, vm, script, timeout=300):
-        r = subprocess.run(self.ssh(vm, script), capture_output=True, text=True, timeout=timeout)
-        self.log.write(f"\n$ [{vm}] {script}\n{r.stdout}{r.stderr}[exit {r.returncode}]\n")
+        rc, out, err = self.bed.run(vm, script, timeout)
+        self.log.write(f"\n$ [{vm}] {script}\n{out}{err}[exit {rc}]\n")
         self.log.flush()
-        if r.returncode != 0:
-            sys.exit(f"step failed in {vm} (exit {r.returncode}): {script}\n{r.stdout}{r.stderr}")
-        return r.stdout
+        if rc != 0:
+            sys.exit(f"step failed in {vm} (exit {rc}): {script}\n{out}{err}")
+        return out
 
     def cursor(self, vm):
         out = self.must(vm, "journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1")
@@ -169,27 +161,34 @@ def setup(rig, name, spec):
     tools = ("mkdir -p /etc/systemd/journald.conf.d; "
              "printf '[Journal]\\nRateLimitIntervalSec=0\\n' > /etc/systemd/journald.conf.d/wgzk.conf; "
              "systemctl restart systemd-journald; ")
+    bed, gw = rig.bed, rig.bed.gw_ip
+    bed.push_share()
     if spec["kind"] == "pqwireguard":
-        # The gateway learns the key of the client from the shared folder.
-        gw = spec["gw_ip"]
-        rig.must("client", tools + f"bash /vagrant/vagrant/pqwireguard/provision.sh client {gw}")
-        rig.must("gateway", tools + f"bash /vagrant/vagrant/pqwireguard/provision.sh gateway {gw}")
+        provision = "bash /vagrant/vagrant/pqwireguard/provision.sh"
+        rig.must("gateway", tools + f"{provision} gateway {gw} keys", timeout=1800)
+        rig.must("client", tools + f"{provision} client {gw} keys", timeout=1800)
+        bed.sync_keys()
+        rig.must("gateway", f"{provision} gateway {gw}")
+        rig.must("client", f"{provision} client {gw}")
     elif spec["kind"] == "rosenpass":
         rig.must("gateway", tools + "bash /vagrant/vagrant/11-rosenpass.sh gateway keys")
         rig.must("client", tools + "bash /vagrant/vagrant/11-rosenpass.sh client keys")
+        bed.sync_keys()
         rig.must("gateway", "bash /vagrant/vagrant/11-rosenpass.sh gateway start")
         rig.must("client", "bash /vagrant/vagrant/11-rosenpass.sh client prepare")
     elif spec["kind"] == "wireguard":
         psk = "psk" if spec["psk"] else ""
-        rig.must("gateway", tools + f"bash /vagrant/vagrant/10-stock.sh gateway {psk}")
-        rig.must("client", tools + f"bash /vagrant/vagrant/10-stock.sh client {psk}")
+        rig.must("gateway", tools + f"GW_IP={gw} bash /vagrant/vagrant/10-stock.sh gateway {psk}")
+        bed.sync_keys()
+        rig.must("client", tools + f"GW_IP={gw} bash /vagrant/vagrant/10-stock.sh client {psk}")
     else:
         v = spec["variant"]
-        rig.must("gateway", tools + "bash /vagrant/vagrant/02-load-module.sh && "
+        rig.must("gateway", tools + "rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; "
+                 "bash /vagrant/vagrant/02-load-module.sh && "
                  f"WGZK_VARIANT={v} bash /vagrant/vagrant/03-gateway.sh")
         rig.must("client", tools + "rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; "
                  "bash /vagrant/vagrant/02-load-module.sh && "
-                 f"PEER_IP={GW_IP} WGZK_VARIANT={v} bash /vagrant/vagrant/03-client.sh")
+                 f"PEER_IP={gw} WGZK_VARIANT={v} bash /vagrant/vagrant/03-client.sh")
     # What is loaded, as the machines see it.
     facts = {}
     for vm in ("gateway", "client"):
@@ -249,12 +248,12 @@ def main():
         blocks = json.load(open(summary_file))["blocks"]
         if json.load(open(summary_file))["system"] != a.system:
             sys.exit(f"{a.out} holds trials of another system")
-    # Other work on the host delays the machines. The load is recorded with every run.
-    load_before = open("/proc/loadavg").read().split()[:3]
     rig = Rig(a.out, spec)
+    # Other work on the host delays the machines. The load is recorded with every run.
+    load_before = rig.bed.host_load()
     facts = setup(rig, a.system, spec)
     gw_pub = open(os.path.join(ROOT, "vagrant/keys/public_right")).read().strip()
-    gw_ip = spec.get("gw_ip", GW_IP)
+    gw_ip = rig.bed.gw_ip
     wgzk = spec["kind"] in ("wgzk", "wgzk-rekey")
     cursors = {vm: rig.cursor(vm) for vm in ("gateway", "client")} if wgzk else {}
 
@@ -276,7 +275,7 @@ def main():
     run0 = idle1
 
     if spec["kind"] == "rosenpass":
-        cmd = (f"python3 /vagrant/bench/guest/rosenpass_trials.py --gateway {GW_IP} "
+        cmd = (f"python3 /vagrant/bench/guest/rosenpass_trials.py --gateway {gw_ip} "
                f"--trials {a.trials} --steady {a.steady} --gap {a.gap}")
     elif spec["kind"] == "pqwireguard":
         cmd = (f"python3 /vagrant/bench/guest/trials.py pqwireguard --iface {spec['iface']} "
@@ -284,11 +283,11 @@ def main():
     else:
         psk = "--psk-file /vagrant/vagrant/keys/stock.psk" if spec.get("psk") else ""
         cmd = (f"python3 /vagrant/bench/guest/trials.py {spec['kind']} --iface {spec['iface']} "
-               f"--gw-pub {gw_pub} --endpoint {GW_IP}:{GW_PORT} {psk} --trials {a.trials} "
+               f"--gw-pub {gw_pub} --endpoint {gw_ip}:{GW_PORT} {psk} --trials {a.trials} "
                f"--steady {a.steady} --gap {a.gap} --label {a.system}")
     started = time.time()
     trials = []
-    with subprocess.Popen(rig.ssh("client", cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as p:
+    with rig.bed.popen("client", cmd) as p:
         for line in p.stdout:
             if line.startswith("{"):
                 trials.append(json.loads(line))
@@ -322,9 +321,10 @@ def main():
         "trials": len(trials),
         "succeeded": sum(t["handshake_ms"] is not None for t in trials),
         "machines": facts,
-        "host": {"threads": os.cpu_count(),
-                 "loadavg_before": [float(x) for x in load_before],
-                 "loadavg_after": [float(x) for x in open("/proc/loadavg").read().split()[:3]]},
+        "host": {"name": load_before["host"], "threads": load_before["threads"],
+                 "loadavg_before": load_before["loadavg"],
+                 "loadavg_after": rig.bed.host_load()["loadavg"]},
+        "test_bed": rig.bed.rig["name"],
         "cpu": {vm: cpu_block(idle0[vm], idle1[vm], run0[vm], run1[vm]) for vm in process},
         "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                                  text=True).stdout.strip(),
@@ -355,7 +355,7 @@ def main():
                                  for b in blocks),
                       "max": max(max(b["host"]["loadavg_before"][0], b["host"]["loadavg_after"][0])
                                  for b in blocks),
-                      "threads": os.cpu_count()},
+                      "threads": blocks[-1]["host"]["threads"]},
         "cpu": {vm: cpu_report(blocks, vm) for vm in process},
     }
     if spec["kind"] == "rosenpass":
@@ -371,7 +371,7 @@ def main():
         json.dump(summary, f, indent=2, sort_keys=True)
         f.write("\n")
     rig.log.close()
-    os.remove(rig.sshcfg)
+    rig.bed.close()
 
     h = summary["handshake_ms"]
     print(f"{a.system}: {summary['succeeded']}/{summary['trials']} handshakes; latency median "

@@ -1,15 +1,17 @@
 #!/bin/bash
 # Build and configure PQ-WireGuard in one machine.
-#   provision.sh gateway|client <address of the gateway on the test network>
+#   provision.sh gateway|client <address of the gateway> [keys]
 #
 # Keys: each machine creates its McEliece key pair once and puts the public
-# half into the shared folder. The gateway is provisioned first and cannot know
-# the key of the client then; "provision.sh gateway ..." is therefore run once
-# more after the client exists (the measurement does that).
+# half under /vagrant/vagrant/keys/pqwireguard. With "keys" the script stops
+# after that, so that the other machine can receive the key before either
+# interface is configured. Without it, a gateway that does not have the key of
+# the client yet comes up without a peer.
 set -euo pipefail
 
 ROLE="${1:?gateway or client}"
 GW_IP="${2:?address of the gateway}"
+ONLY="${3:-}"
 SRC="/vagrant/vagrant/artifacts/pqwireguard-20200402"
 PUB="/vagrant/vagrant/keys/pqwireguard"
 BUILD="/opt/pqwireguard"
@@ -44,6 +46,10 @@ if [ ! -f "$CONF/prikey" ]; then
     (umask 077; wg mckey "$CONF/prikey" "$CONF/pubkey")
 fi
 cp "$CONF/pubkey" "$PUB/$ROLE.pubkey"
+if [ "$ONLY" = "keys" ]; then
+    echo "==> keys of the $ROLE are in place"
+    exit 0
+fi
 
 ip link del "$IFACE" 2>/dev/null || true
 rmmod wireguard 2>/dev/null || true

@@ -25,3 +25,4 @@ vagrant/wgzk-base.box
 vagrant/artifacts/
 vagrant/build-base/.vagrant/
 *-cloudimg-console.log
+bench/rigs/

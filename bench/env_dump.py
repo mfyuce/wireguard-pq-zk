@@ -14,13 +14,13 @@ run, and left out if they do not.
 import datetime
 import json
 import os
-import shlex
 import subprocess
 import sys
-import tempfile
 
-# Directory of the Vagrantfile, and its machines.
-BEDS = {".": ("gateway", "client"), "vagrant/pqwireguard": ("pq-gateway", "pq-client")}
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rig as rigmod  # noqa: E402
+
+BEDS = ("wgzk", "pq")
 
 GUEST_FACTS = {
     "cpus": "nproc",
@@ -53,6 +53,17 @@ HOST_FACTS = {
     "governor": "cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || true",
 }
 
+REMOTE_HOST_FACTS = {
+    "cpu_model": "awk -F': ' '/model name/ {print $2; exit}' /proc/cpuinfo",
+    "threads": "nproc",
+    "memory_kb": "awk '/MemTotal/ {print $2}' /proc/meminfo",
+    "kernel": "uname -r",
+    "os": "lsb_release -ds",
+    "virtualization": "systemd-detect-virt || true",
+    "lxd": "snap list lxd 2>/dev/null | awk 'NR==2 {print $2}'",
+    "loadavg": "cut -d' ' -f1-3 /proc/loadavg",
+}
+
 CODE_FACTS = {
     "commit": "git rev-parse HEAD",
     "branch": "git rev-parse --abbrev-ref HEAD",
@@ -77,29 +88,31 @@ def number(text):
     return int(text) if text.isdigit() else text
 
 
-def guests(bed, names):
-    """The facts of the machines of one test bed; nothing if it is not up."""
-    cfg = subprocess.run(["vagrant", "ssh-config"], cwd=os.path.join(ROOT, bed),
-                         capture_output=True, text=True)
-    if cfg.returncode != 0:
-        return {}
-    script = "; ".join(f"printf '%s\\t%s\\n' {k} \"$({v})\"" for k, v in GUEST_FACTS.items())
+def facts(commands, run):
+    """`run` takes a script and returns its output; the facts come back as name<TAB>value lines."""
+    script = "; ".join(f"printf '%s\\t%s\\n' {k} \"$({v})\"" for k, v in commands.items())
     out = {}
-    with tempfile.NamedTemporaryFile("w", suffix=".cfg") as f:
-        f.write(cfg.stdout + "\nHost *\n  LogLevel ERROR\n")
-        f.flush()
-        for name in names:
-            r = subprocess.run(["ssh", "-F", f.name, name, "sudo bash -c " + shlex.quote(script)],
-                               capture_output=True, text=True)
-            if r.returncode != 0:
-                continue
-            facts = {}
-            for line in r.stdout.splitlines():
-                key, sep, value = line.partition("\t")
-                if sep and key in GUEST_FACTS:
-                    facts[key] = number(value.strip())
-            out[name] = facts
+    for line in run(script).splitlines():
+        key, sep, value = line.partition("\t")
+        if sep and key in commands:
+            out[key] = number(value.strip())
     return out
+
+
+def guests(name):
+    """The machines of one pair; nothing if the test bed has no such pair or it is not up."""
+    if name not in rigmod.description()["beds"]:
+        return {}, None
+    try:
+        bed = rigmod.Bed(name)
+    except SystemExit:
+        return {}, None
+    out = {}
+    for role in ("gateway", "client"):
+        rc, stdout, _ = bed.run(role, "true", timeout=60)
+        if rc == 0:
+            out[bed.names[role]] = facts(GUEST_FACTS, lambda s, r=role: bed.run(r, s, timeout=120)[1])
+    return out, bed
 
 
 def main():
@@ -107,14 +120,23 @@ def main():
         sys.exit(__doc__)
     env = {
         "recorded": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "host": {k: number(sh(v)) for k, v in HOST_FACTS.items()},
+        "test_bed": rigmod.description()["name"],
+        "this_host": {k: number(sh(v)) for k, v in HOST_FACTS.items()},
+        "hosts": {},
         "code": {k: number(sh(v)) for k, v in CODE_FACTS.items()},
         "guests": {},
     }
-    for bed, names in BEDS.items():
-        env["guests"].update(guests(bed, names))
-    if "gateway" not in env["guests"] or "client" not in env["guests"]:
-        sys.exit("the machines gateway and client do not answer; are they up?")
+    for name in BEDS:
+        machines, bed = guests(name)
+        env["guests"].update(machines)
+        if bed is not None and bed.remote:
+            # The machines run on these hosts, not on the one that drives the measurement.
+            for target, host in bed.hosts.items():
+                env["hosts"][host.addr] = facts(REMOTE_HOST_FACTS, host.run)
+    if not env["hosts"]:
+        env["hosts"]["local"] = env["this_host"]
+    if len(env["guests"]) < 2:
+        sys.exit("the machines of the test bed do not answer; are they up?")
     os.makedirs(os.path.dirname(os.path.abspath(sys.argv[1])), exist_ok=True)
     with open(sys.argv[1], "w") as f:
         json.dump(env, f, indent=2, sort_keys=True)

@@ -27,12 +27,17 @@ import sys
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-GW_IP = "192.168.100.1"
+sys.path.insert(0, os.path.join(ROOT, "bench"))
+import rig as rigmod  # noqa: E402
+
+# Address of the gateway on the test network and the interface of the machines
+# there: both come from the test bed (see Rig) and are set before the first test.
+GW_IP = None
+NIC = None
 GW_PORT = 51921
 TLS_PORT = 51821
 GW_ADDR = "fd57:475a:4b00::1"
 TUNNEL_NET = "fd57:475a:4b00::/64"
-NIC = "enp0s8"
 IF_GW = "wg1r"
 IF_CL = "wg1l"
 PROBE = "python3 /usr/local/bin/wgzk_probe.py"
@@ -55,13 +60,11 @@ class Skip(Exception):
 
 class Rig:
     def __init__(self, outdir):
+        global GW_IP, NIC
         self.outdir = outdir
-        self.sshcfg = os.path.join(outdir, "ssh.cfg")
-        cfg = subprocess.run(["vagrant", "ssh-config"], cwd=ROOT, capture_output=True, text=True)
-        if cfg.returncode != 0:
-            sys.exit("vagrant ssh-config failed; are both machines up?\n" + cfg.stderr)
-        with open(self.sshcfg, "w") as f:
-            f.write(cfg.stdout + "\nHost *\n  LogLevel ERROR\n")
+        self.bed = rigmod.Bed("wgzk", workdir=outdir)
+        GW_IP, NIC = self.bed.gw_ip, self.bed.nic
+        self.bed.push_share()
         self.gw_pub = open(os.path.join(ROOT, "vagrant/keys/public_right")).read().strip()
         self.log = None
         self.variant = None
@@ -69,12 +72,8 @@ class Rig:
     # ── remote execution ─────────────────────────────────────────────────────
     def run(self, vm, script, timeout=180):
         """Runs `script` as root in `vm`; returns (exit status, output)."""
-        cmd = ["ssh", "-F", self.sshcfg, vm, "sudo bash -c " + shlex.quote(script)]
-        try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-            rc, out = r.returncode, r.stdout + r.stderr
-        except subprocess.TimeoutExpired as e:
-            rc, out = 124, (e.stdout or b"").decode(errors="replace") + "\n[timeout]"
+        rc, out, err = self.bed.run(vm, script, timeout)
+        out += err
         if self.log:
             self.log.write(f"\n$ [{vm}] {script}\n{out}[exit {rc}]\n")
             self.log.flush()
@@ -840,7 +839,8 @@ def main():
     count = {s: sum(r["status"] == s for r in results) for s in ("pass", "fail", "skipped")}
     with open(os.path.join(outdir, "summary.md"), "w") as f:
         f.write(f"# Acceptance tests, {stamp}\n\n")
-        f.write(f"Commit `{commit}`, {len(dirty.splitlines())} files changed in the working tree.\n\n")
+        f.write(f"Commit `{commit}`, {len(dirty.splitlines())} files changed in the working tree. "
+                f"Test bed: {rig.bed.rig['name']}.\n\n")
         f.write("Artefacts under test:\n\n```\n" + manifest + "```\n\n")
         f.write(f"Passed {count['pass']}, failed {count['fail']}, skipped {count['skipped']}.\n\n")
         f.write("| Test | Area | Variant | Result | Checks | Claim |\n|---|---|---|---|---|---|\n")
@@ -857,7 +857,7 @@ def main():
             for c in r["checks"]:
                 if not c["ok"]:
                     f.write(f"- {c['check']}: `{json.dumps(c['seen'], sort_keys=True)}`\n")
-    os.remove(rig.sshcfg)
+    rig.bed.close()
     print(f"\npassed {count['pass']}, failed {count['fail']}, skipped {count['skipped']}; results in {outdir}")
     return 1 if count["fail"] else 0
 
