@@ -1,0 +1,125 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=PNpDvz9Dx3qF5KNVNvBAby81aHyPFjECSk795trKohw=
+address=fd57:475a:4b00:0:378:d12c:d33b:82cf
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: PNpDvz9Dx3qF5KNVNvBAby81aHyPFjECSk795trKohw=
+  private key: (hidden)
+  listening port: 37380
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py capture --iface wgtest0 --out /tmp/accepted.bin --timeout 8 --gw-pub /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE= & sleep 0.7; ping -6 -c 1 -W 2 fd57:475a:4b00::1 >/dev/null; echo ping=$?; wait
+{"event": "captured", "mac1_ok": true, "n": 1, "nonce4": "cf035a8c", "sender_index": 1687573876, "sport": 37380}
+{"captured": 1, "event": "capture_done", "wanted": 1}
+ping=0
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 1
+refused_full 0
+undecryptable 0
+accepted 1
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] systemctl stop wgzk
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py send --in /tmp/accepted.bin --dst 192.168.100.1:51921 --count 500 --rate 60 --listen 0.2
+{"bytes": 244, "cookie_replies": 0, "count": 500, "event": "sent", "mutate": "none", "nonce4": "cf035a8c", "other_replies": 0, "plain": false, "responses": 0, "seconds": 8.334, "sender_index": 1687573876}
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 501
+refused_full 0
+undecryptable 0
+accepted 1
+refused_handshake 0
+rejected 0
+expired 500
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] systemctl start wgzk; sleep 1.5
+[exit 0]
+
+$ [client] python3 /usr/local/bin/wgzk_probe.py send --in /tmp/accepted.bin --dst 192.168.100.1:51921 --count 500 --rate 60 --listen 1
+{"bytes": 244, "cookie_replies": 0, "count": 500, "event": "sent", "mutate": "none", "nonce4": "cf035a8c", "other_replies": 0, "plain": false, "responses": 0, "seconds": 8.334, "sender_index": 1687573876}
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 1001
+refused_full 0
+undecryptable 0
+accepted 1
+refused_handshake 0
+rejected 500
+expired 500
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] umask 077; wg genkey > /tmp/other.key; timeout 5 wg set wg1r private-key /tmp/other.key; echo rc=$?
+rc=0
+[exit 0]
+
+$ [gateway] systemctl stop wgzk; timeout 20 ip link del wg1r; echo rc=$?
+rc=0
+[exit 0]
+
+$ [gateway] timeout 20 rmmod wireguard; echo rc=$?; dmesg | grep -c -E 'BUG|WARNING|Call Trace|unregister_netdevice: waiting'
+rc=0
+0
+[exit 1]

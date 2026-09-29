@@ -1,0 +1,112 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=Qs0yRIRYDVdeRy4/ktPok/SdDjyXiA1wv3dD7EHq3gc=
+address=fd57:475a:4b00:0:c589:ee2c:e4ab:9002
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: Qs0yRIRYDVdeRy4/ktPok/SdDjyXiA1wv3dD7EHq3gc=
+  private key: (hidden)
+  listening port: 35834
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [client] test -x /usr/local/bin/wg-zk-daemon-fault
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/system/wgzk.service.d; umask 077; printf '%s\n' WGZK_FAULT=no_psk > /etc/wgzk-test.env; printf '%s' '[Service]
+EnvironmentFile=/etc/wgzk-test.env
+ExecStart=
+ExecStart=/usr/local/bin/wg-zk-daemon-fault
+' > /etc/systemd/system/wgzk.service.d/test.conf; systemctl daemon-reload; systemctl restart wgzk; sleep 1; systemctl is-active wgzk
+active
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [client] wg-zk-daemon new-connection --iface wg1l >/dev/null
+[exit 0]
+
+$ [client] wg show wg1l public-key
+ICI7qV/p9X2kaZJOTqH8LMdxGImAd4TLP/h8V7hFgyU=
+[exit 0]
+
+$ [client] ping -6 -c 1 -W 2 fd57:475a:4b00::1
+PING fd57:475a:4b00::1(fd57:475a:4b00::1) 56 data bytes
+
+--- fd57:475a:4b00::1 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+[exit 1]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 1
+refused_full 0
+undecryptable 0
+accepted 1
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [client] wg show wg1l latest-handshakes
+/04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=	0
+[exit 0]
+
+$ [gateway] wg show wg1r transfer | awk '{print $2}'; wg show wg1r latest-handshakes | awk '{print $2}'
+244
+0
+[exit 0]

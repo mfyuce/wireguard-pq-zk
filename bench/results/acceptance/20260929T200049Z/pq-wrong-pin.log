@@ -1,0 +1,155 @@
+
+$ [gateway] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; pkill tcpdump; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [gateway] iptables -D INPUT -p udp --dport 51921 -j DROP 2>/dev/null; true
+[exit 0]
+
+$ [client] install -m 755 /vagrant/bench/acceptance/wgzk_probe.py /usr/local/bin/wgzk_probe.py; mkdir -p /etc/systemd/journald.conf.d; printf '[Journal]\nRateLimitIntervalSec=0\n' > /etc/systemd/journald.conf.d/wgzk.conf; systemctl restart systemd-journald; rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-client.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+public_key=UPH092XNUj9aZKivQv9mwTJSqqCplt8Qzl4E+FeN+hQ=
+address=fd57:475a:4b00:0:6c1c:2d74:d072:5dbf
+active
+==> wgzk daemon running (client, zk-pq, epoch 1)
+interface: wg1l
+  public key: UPH092XNUj9aZKivQv9mwTJSqqCplt8Qzl4E+FeN+hQ=
+  private key: (hidden)
+  listening port: 59392
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+[exit 0]
+
+$ [client] mkdir -p /etc/systemd/system/wgzk.service.d; umask 077; printf '%s\n' MLKEM_CERT_FP=0000000000000000000000000000000000000000000000000000000000000000 > /etc/wgzk-test.env; printf '%s' '[Service]
+EnvironmentFile=/etc/wgzk-test.env
+' > /etc/systemd/system/wgzk.service.d/test.conf; systemctl daemon-reload; systemctl restart wgzk; sleep 1; systemctl is-active wgzk
+active
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=e6a325d7aab144b09b565d8c4be4d789;i=1f87;b=803d77ddc49e4e5ea7391884acfbd14f;m=2c4764de8;t=65ca4bfc920ea;x=666c55edd602c95f
+[exit 0]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [client] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+[exit 0]
+
+$ [client] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=a04ba51497c94fceb15b4fa2d2c14874;i=2ea2;b=5708c4198e784f8da063614019aef0c3;m=2bdf30e03;t=65ca4c034b6d7;x=ce5d16d066951495
+[exit 0]
+
+$ [client] wg-zk-daemon new-connection --iface wg1l >/dev/null
+[exit 0]
+
+$ [client] wg show wg1l public-key
+sK7BT+5kh5NmiJ6+l5q4Va9khYN/Ls/T2ZTtZYfOWUQ=
+[exit 0]
+
+$ [client] ping -6 -c 1 -W 3 fd57:475a:4b00::1
+PING fd57:475a:4b00::1(fd57:475a:4b00::1) 56 data bytes
+
+--- fd57:475a:4b00::1 ping statistics ---
+1 packets transmitted, 0 received, 100% packet loss, time 0ms
+
+[exit 1]
+
+$ [gateway] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 0
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [client] cat /sys/kernel/debug/wgzk/stats
+pending 0
+proof_requests 1
+proofs_set 0
+deferred 0
+refused_full 0
+undecryptable 0
+accepted 0
+refused_handshake 0
+rejected 0
+expired 0
+late_verdict 0
+legacy_dropped 0
+[exit 0]
+
+$ [gateway] wg show wg1r allowed-ips
+[exit 0]
+
+$ [client] journalctl -u wgzk -o cat --no-pager --after-cursor='s=a04ba51497c94fceb15b4fa2d2c14874;i=2ea2;b=5708c4198e784f8da063614019aef0c3;m=2bdf30e03;t=65ca4c034b6d7;x=ce5d16d066951495'
+[client] side channel: TLS connect: invalid peer certificate: ApplicationVerificationFailure
+[timing] side=client token=1826822483 nonce_prefix=619b382d result=fail reason=tls_connect zk_us=106 encap_us=101 tls_us=0 write_us=0 psk_us=0 tail_us=0 total_us=2139
+[exit 0]
+
+$ [client] wg show wg1l latest-handshakes
+/04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=	0
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o cat --no-pager --after-cursor='s=e6a325d7aab144b09b565d8c4be4d789;i=1f87;b=803d77ddc49e4e5ea7391884acfbd14f;m=2c4764de8;t=65ca4bfc920ea;x=666c55edd602c95f'
+[mlkem_channel] connection dropped: TLS accept: received fatal alert: AccessDenied
+[exit 0]
