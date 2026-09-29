@@ -5,6 +5,60 @@ A modified Linux 6.8 WireGuard kernel module that adds **Schnorr zero-knowledge 
 This is the reference implementation for the paper:
 > *Privacy-Preserving and Post-Quantum VPN Handshakes with Schnorr-Based Zero-Knowledge Proofs*, Computers & Security 2026.
 
+## Protocol revision R1
+
+This branch implements protocol revision R1. **[docs/protocol-r1.md](docs/protocol-r1.md) is
+the specification**; where a section below disagrees with it, the section describes the first
+version and has not been rewritten yet. What changed:
+
+- A client has no long-term WireGuard key. It uses a new key for every connection
+  (`wg-zk-daemon new-connection`), and the gateway registers the key as a peer only after it
+  has verified the proof that came with the initiation.
+- The gateway stores an initiation, asks its daemon, and processes the initiation only after
+  an accepting verdict. It decapsulates nothing and installs nothing before that.
+- The proof is bound to the credential, the epoch, the keys of both sides, the nonce and a
+  hash of the ML-KEM ciphertext. Accepted nonces are remembered.
+- The side channel is TLS 1.3 only, and the client verifies the handshake signature of the
+  pinned certificate.
+- The netlink family requires privileges, and every table has a bound and a timeout.
+
+### Test bed
+
+Two VirtualBox machines, built with Vagrant. On the host:
+
+```bash
+bash vagrant/build-artifacts.sh    # kernel module, daemon (two builds), key generators
+(cd vagrant && bash build-base.sh) # once: base box with kernel 6.8.0-59-generic
+vagrant up                         # gateway and client; ends with an end-to-end test
+WGZK_VARIANT=zk-only vagrant provision   # authorization only, without ML-KEM
+```
+
+### Acceptance tests
+
+```bash
+python3 bench/acceptance/run.py --list
+python3 bench/acceptance/run.py            # all tests, about 15 minutes
+```
+
+Every test starts from freshly provisioned machines, states what it expects and records what
+it saw, in `bench/results/acceptance/<time>/`. The negative tests use
+`bench/acceptance/wgzk_probe.py`, which sends what an attacker could send, and a daemon built
+with the cargo feature `fault-injection`, which misbehaves in one chosen way. The released
+daemon contains no fault injection and refuses to start when `WGZK_FAULT` is set.
+
+### Measurements
+
+```bash
+python3 bench/latency.py wireguard --trials 1000 --out bench/results/r1/wireguard
+python3 bench/latency.py wgzk-zkpq --trials 1000 --out bench/results/r1/wgzk-zkpq
+python3 bench/env_dump.py bench/results/r1/env.json
+```
+
+The metric is the same for every system: the round-trip time of the first packet on a tunnel
+without a session, minus the median round-trip time over the established session.
+
+---
+
 > **New to the crypto?** See [EXPLANATIONS.md](EXPLANATIONS.md) for background on X25519, Schnorr zero-knowledge proofs, ML-KEM-768, and the hybrid PSK design used in this repo.
 
 ---
