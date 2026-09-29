@@ -1,16 +1,19 @@
-/// ML-KEM-768 (FIPS 203) key encapsulation for PQ hybrid handshake.
-///
-/// Flow:
-///   keygen() → (seed[64B], ek_bytes[1184B])
-///   Client: encap(ek_bytes) → (ct[1088B], ss[32B])
-///   Server: decap(seed, ct) → ss[32B]
-///   Both:   psk = derive_psk(ss) = SHA-256("wgzk-mlkem-psk-v1" || ss)
-///
-/// Inject PSK into WireGuard before Noise handshake via `wg set ... preshared-key`.
+//! ML-KEM-768 (FIPS 203) for the post-quantum pre-shared key of mode `0x02`
+//! (`docs/protocol-r1.md`, Sections 3.2 and 3.4).
+//!
+//! ```text
+//! Client:  (ct[1088], ss[32]) = Encaps(ek)            Encapsulator::encap
+//! Gateway: ss = Decaps(dk, ct)                          Decapsulator::decap
+//! Both:    psk = SHA-256("wgzk-mlkem-psk-v1" || ss)     derive_psk
+//! ```
+//!
+//! Keys are parsed once at startup: the gateway expands its 64-byte seed into the
+//! decapsulation key, the client validates the 1184-byte encapsulation key. Installing the
+//! PSK into WireGuard is the job of the installer in `peers.rs`.
 
 use hybrid_array::Array;
 use ml_kem::{
-    kem::{Decapsulate, Encapsulate, KeyExport, Kem},
+    kem::{Decapsulate, Encapsulate},
     DecapsulationKey, EncapsulationKey, MlKem768, Seed,
 };
 use sha2::{Digest, Sha256};
@@ -19,35 +22,43 @@ pub const CT_LEN: usize = 1088; // ML-KEM-768 ciphertext (FIPS 203 §7)
 pub const EK_LEN: usize = 1184; // ML-KEM-768 encapsulation key
 pub const SEED_LEN: usize = 64; // DecapsulationKey seed (compact serialization)
 
-/// Generate a fresh ML-KEM-768 keypair.
-/// Returns (seed[64B], ek_bytes[1184B]).
-pub fn keygen() -> ([u8; SEED_LEN], [u8; EK_LEN]) {
-    let (dk, ek) = MlKem768::generate_keypair();
-    let seed: Seed = dk.to_seed().expect("freshly generated key must have seed");
-    let seed_bytes: [u8; SEED_LEN] = seed.into();
-    let ek_bytes: [u8; EK_LEN] = ek.to_bytes().into();
-    (seed_bytes, ek_bytes)
+/// Client side: the gateway's validated encapsulation key.
+pub struct Encapsulator {
+    ek: EncapsulationKey<MlKem768>,
 }
 
-/// Client: encapsulate shared secret to server's encapsulation key.
-/// Returns (ciphertext[1088B], shared_secret[32B]).
-pub fn encap(server_ek_bytes: &[u8; EK_LEN]) -> anyhow::Result<([u8; CT_LEN], [u8; 32])> {
-    let ek_arr: Array<u8, _> = (*server_ek_bytes).into();
-    let ek = EncapsulationKey::<MlKem768>::new(&ek_arr)
-        .map_err(|_| anyhow::anyhow!("invalid ML-KEM-768 encapsulation key"))?;
-    let (ct, ss) = ek.encapsulate();
-    let ct_bytes: [u8; CT_LEN] = ct.into();
-    let ss_bytes: [u8; 32] = ss.into();
-    Ok((ct_bytes, ss_bytes))
+impl Encapsulator {
+    pub fn new(server_ek_bytes: &[u8; EK_LEN]) -> anyhow::Result<Self> {
+        let ek_arr: Array<u8, _> = (*server_ek_bytes).into();
+        let ek = EncapsulationKey::<MlKem768>::new(&ek_arr)
+            .map_err(|_| anyhow::anyhow!("invalid ML-KEM-768 encapsulation key"))?;
+        Ok(Encapsulator { ek })
+    }
+
+    /// Encapsulate a fresh shared secret. Returns (ciphertext[1088B], shared_secret[32B]).
+    pub fn encap(&self) -> ([u8; CT_LEN], [u8; 32]) {
+        let (ct, ss) = self.ek.encapsulate();
+        (ct.into(), ss.into())
+    }
 }
 
-/// Server: decapsulate ciphertext using the 64-byte seed.
-pub fn decap(seed: &[u8; SEED_LEN], ct_bytes: &[u8; CT_LEN]) -> [u8; 32] {
-    let seed_arr: Seed = (*seed).into();
-    let dk = DecapsulationKey::<MlKem768>::from_seed(seed_arr);
-    let ct: ml_kem::kem::Ciphertext<MlKem768> = (*ct_bytes).into();
-    let ss = dk.decapsulate(&ct);
-    ss.into()
+/// Gateway side: the decapsulation key, expanded once from the 64-byte seed.
+pub struct Decapsulator {
+    dk: DecapsulationKey<MlKem768>,
+}
+
+impl Decapsulator {
+    pub fn from_seed(seed: &[u8; SEED_LEN]) -> Self {
+        let seed_arr: Seed = (*seed).into();
+        Decapsulator { dk: DecapsulationKey::<MlKem768>::from_seed(seed_arr) }
+    }
+
+    /// Decapsulate. ML-KEM decapsulation never fails: a malformed ciphertext yields an
+    /// unrelated (implicit-rejection) secret, so the PSKs of the two sides then differ.
+    pub fn decap(&self, ct_bytes: &[u8; CT_LEN]) -> [u8; 32] {
+        let ct: ml_kem::kem::Ciphertext<MlKem768> = (*ct_bytes).into();
+        self.dk.decapsulate(&ct).into()
+    }
 }
 
 /// Derive 32-byte WireGuard PSK from ML-KEM shared secret.
@@ -59,25 +70,15 @@ pub fn derive_psk(shared_secret: &[u8; 32]) -> [u8; 32] {
     h.finalize().into()
 }
 
-/// Inject PSK into WireGuard peer via `wg set`.
-/// peer_wg_pubkey: base64-encoded WireGuard Curve25519 public key.
-pub fn inject_psk(ifname: &str, peer_wg_pubkey: &str, psk: &[u8; 32]) -> anyhow::Result<()> {
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
-    use std::io::Write;
-    use std::process::{Command, Stdio};
-    let psk_b64 = STANDARD.encode(psk);
-    let mut child = Command::new("wg")
-        .args(["set", ifname, "peer", peer_wg_pubkey, "preshared-key", "/dev/stdin"])
-        .stdin(Stdio::piped())
-        .spawn()?;
-    child.stdin.as_mut().unwrap().write_all(psk_b64.as_bytes())?;
-    let status = child.wait()?;
-    if !status.success() {
-        anyhow::bail!("wg set preshared-key failed: {status}");
-    }
-    Ok(())
+/// Generate a fresh ML-KEM-768 keypair: (seed[64B], ek_bytes[1184B]). Test fixtures only;
+/// production keys come from the enrolment channel.
+#[cfg(test)]
+pub fn keygen() -> ([u8; SEED_LEN], [u8; EK_LEN]) {
+    use ml_kem::kem::{Kem, KeyExport};
+    let (dk, ek) = MlKem768::generate_keypair();
+    let seed: Seed = dk.to_seed().expect("freshly generated key must have seed");
+    (seed.into(), ek.to_bytes().into())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -86,23 +87,32 @@ mod tests {
     #[test]
     fn encap_decap_roundtrip() {
         let (seed, ek_bytes) = keygen();
-        let (ct, ss_client) = encap(&ek_bytes).expect("encap");
-        let ss_server = decap(&seed, &ct);
+        let (ct, ss_client) = Encapsulator::new(&ek_bytes).expect("ek").encap();
+        let ss_server = Decapsulator::from_seed(&seed).decap(&ct);
         assert_eq!(ss_client, ss_server, "shared secrets must match");
+        assert_eq!(derive_psk(&ss_client), derive_psk(&ss_server));
     }
 
     #[test]
-    fn psk_deterministic() {
-        let ss = [0xab_u8; 32];
-        assert_eq!(derive_psk(&ss), derive_psk(&ss));
+    fn psk_known_answer() {
+        // SHA-256("wgzk-mlkem-psk-v1" || 32 x 0xab), computed independently with hashlib.
+        assert_eq!(
+            hex::encode(derive_psk(&[0xab_u8; 32])),
+            "2f1ae5715671518c26330069d6d1cac51e28aed10d135a9644d86c698b0f5be0"
+        );
     }
 
     #[test]
-    fn correct_sizes() {
+    fn rejects_malformed_encapsulation_key() {
+        // Coefficients must be < q = 3329; all-0xff encodes 4095.
+        assert!(Encapsulator::new(&[0xff; EK_LEN]).is_err());
+    }
+
+    #[test]
+    fn tampered_ciphertext_gives_other_secret() {
         let (seed, ek_bytes) = keygen();
-        assert_eq!(seed.len(), SEED_LEN);
-        assert_eq!(ek_bytes.len(), EK_LEN);
-        let (ct, _) = encap(&ek_bytes).expect("encap");
-        assert_eq!(ct.len(), CT_LEN);
+        let (mut ct, ss_client) = Encapsulator::new(&ek_bytes).expect("ek").encap();
+        ct[100] ^= 0x01;
+        assert_ne!(Decapsulator::from_seed(&seed).decap(&ct), ss_client);
     }
 }

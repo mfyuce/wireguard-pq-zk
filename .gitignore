@@ -12,9 +12,15 @@ wireguard.mod
 /tmp/**
 **/target/
 Cargo.lock
+!userspace/wg-zk-daemon/Cargo.lock
+!userspace/gen-pk/Cargo.lock
+!userspace/gen-mlkem/Cargo.lock
 .config
 *.txt
 vagrant/keys/
+.env
+__pycache__/
 .vagrant/
 vagrant/wgzk-base.box
+vagrant/artifacts/
 vagrant/build-base/.vagrant/
