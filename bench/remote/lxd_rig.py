@@ -61,7 +61,9 @@ BEDS = {
              "packages": ["wireguard-tools", "tcpdump", "iputils-ping"],
              "gateway": {"name": "wgzk-gateway", "mgmt": 11, "test": "192.168.100.1"},
              "client": {"name": "wgzk-client", "mgmt": 12, "test": "192.168.100.2"}},
-    "pq": {"image": "ubuntu:18.04", "kernel": "4.15.0-91-generic",
+    # The image of Ubuntu 18.04 comes without the agent that "lxc exec" talks to. The
+    # machine installs it at its first boot from the share that LXD offers to every machine.
+    "pq": {"image": "ubuntu:18.04", "kernel": "4.15.0-91-generic", "agent": "install",
            "kernel_script": "/vagrant/vagrant/pqwireguard/kernel.sh",
            "packages": ["tcpdump", "iputils-ping"],
            "gateway": {"name": "wgzk-pq-gateway", "mgmt": 21, "test": "192.168.101.1"},
@@ -85,8 +87,14 @@ def die(msg):
     sys.exit("lxd_rig: " + msg)
 
 
-def user_data(packages):
+def user_data(packages, install_agent=False):
     pk = "\n".join(f"  - {p}" for p in packages)
+    agent = ""
+    if install_agent:
+        agent = ("  - mount -t 9p config /mnt -o access=0,trans=virtio\n"
+                 "  - sh -c 'cd /mnt && ./install.sh'\n"
+                 "  - umount /mnt\n"
+                 "  - systemctl start --no-block lxd-agent\n")
     return f"""#cloud-config
 package_update: true
 packages:
@@ -98,7 +106,7 @@ write_files:
       RateLimitIntervalSec=0
 runcmd:
   - systemctl restart systemd-journald
-"""
+{agent}"""
 
 
 def network_config(mac_mgmt, mac_test, test_addr):
@@ -147,8 +155,11 @@ def instance_create(host, home, bed, role, rig_name, slot):
     # The two cloud-init documents go to the host as files and from there into the
     # configuration of the machine.
     conf = f"{home}/wgzk-rig/config/{inst['name']}"
-    host.put_text(user_data(spec["packages"]), conf + ".user-data")
+    no_agent = spec.get("agent") == "install"
+    host.put_text(user_data(spec["packages"], no_agent), conf + ".user-data")
     host.put_text(network_config(mac_mgmt, mac_test, inst["test"]), conf + ".network-config")
+    # Without the agent the two documents cannot reach the machine through it; they go on a disk.
+    drive = f"lxc config device add {inst['name']} cidata disk source=cloud-init:config </dev/null\n" if no_agent else ""
     host.run(f"""
 set -euo pipefail
 if lxc info {inst['name']} >/dev/null 2>&1 </dev/null; then echo "exists: {inst['name']}"; exit 0; fi
@@ -157,7 +168,7 @@ lxc config device override {inst['name']} eth0 hwaddr={mac_mgmt} ipv4.address={M
 lxc config device override {inst['name']} eth1 hwaddr={mac_test} </dev/null
 lxc config set {inst['name']} user.user-data - < {conf}.user-data
 lxc config set {inst['name']} user.network-config - < {conf}.network-config
-lxc start {inst['name']} </dev/null
+{drive}lxc start {inst['name']} </dev/null
 """, sudo=True, timeout=3600)
     return {"name": inst["name"], "mgmt": f"{MGMT_NET}.{n}", "test": inst["test"], "host": host.target,
             "bed": bed, "role": role}
@@ -191,11 +202,24 @@ def found_before(host):
     return host.state(STATE_CMD)
 
 
+def bed_is_up(rig, bed, by_target):
+    spec = BEDS[bed]
+    for g in rig["guests"]:
+        if g["bed"] != bed:
+            continue
+        rc, _ = by_target[g["host"]].guest(
+            g["name"], f"test \"$(uname -r)\" = {spec['kernel']} && test -f /vagrant/vagrant/02-load-module.sh",
+            check=False, timeout=60)
+        if rc != 0:
+            return False
+    return bed in rig["beds"]
+
+
 def create(a):
+    """Makes a test bed, or adds to one: pairs of machines that are up are left alone, pairs
+    that an earlier attempt left unfinished are removed and made again."""
     os.makedirs(RIGS, exist_ok=True)
     state_file = os.path.join(RIGS, a.name + ".json")
-    if os.path.exists(state_file):
-        die(f"{state_file} exists; destroy the test bed first")
     known = os.path.join(RIGS, "known_hosts")
     gw_host = rigmod.Host(a.gateway_host, known)
     cl_host = rigmod.Host(a.client_host, known) if a.client_host and a.client_host != a.gateway_host else gw_host
@@ -203,20 +227,32 @@ def create(a):
     if two and not a.public_gateway:
         die("two hosts need --public-gateway, the address at which the client reaches the gateway's host")
     hosts = [gw_host] + ([cl_host] if two else [])
+    by_target = {h.target: h for h in hosts}
     beds = a.beds.split(",")
 
-    rig = {"name": a.name, "kind": "remote", "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-           "known_hosts": known, "two_hosts": two,
-           "hosts": {h.target: {"target": h.target, "before": found_before(h)} for h in hosts},
-           "beds": {}, "guests": []}
-    # The description exists from the first change on, so that destroy can always run.
-    with open(state_file, "w") as f:
-        json.dump(rig, f, indent=2)
+    if os.path.exists(state_file):
+        rig = json.load(open(state_file))
+        if sorted(rig["hosts"]) != sorted(by_target):
+            die(f"{state_file} describes a test bed on other hosts: {', '.join(rig['hosts'])}")
+    else:
+        rig = {"name": a.name, "kind": "remote", "created": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+               "known_hosts": known, "two_hosts": two,
+               "hosts": {h.target: {"target": h.target, "before": found_before(h)} for h in hosts},
+               "beds": {}, "guests": []}
+        # The description exists from the first change on, so that destroy can always run.
+        with open(state_file, "w") as f:
+            json.dump(rig, f, indent=2)
 
     homes = {h.target: host_setup(h) for h in hosts}
     for h in hosts:
         h.push_share()
     for bed in beds:
+        if bed_is_up(rig, bed, by_target):
+            print(f"{bed}: the machines are up", flush=True)
+            continue
+        for g in [g for g in rig["guests"] if g["bed"] == bed]:
+            by_target[g["host"]].run(f"lxc delete -f {g['name']} </dev/null", sudo=True, check=False)
+        rig["guests"] = [g for g in rig["guests"] if g["bed"] != bed]
         gw = instance_create(gw_host, homes[gw_host.target], bed, "gateway", a.name, a.slot)
         cl = instance_create(cl_host, homes[cl_host.target], bed, "client", a.name, a.slot)
         rig["guests"] += [gw, cl]
@@ -231,19 +267,18 @@ def create(a):
         with open(state_file, "w") as f:
             json.dump(rig, f, indent=2)
 
-    by_target = {h.target: h for h in hosts}
-    for g in rig["guests"]:
-        host = by_target[g["host"]]
-        print(f"{g['name']} on {g['host']}: first boot", flush=True)
-        wait_for(host, g["name"], "first boot",
-                 "cloud-init status --wait >/dev/null 2>&1; test -f /vagrant/vagrant/02-load-module.sh")
-        spec = BEDS[g["bed"]]
-        print(f"{g['name']}: kernel {spec['kernel']}", flush=True)
-        rc, out = host.guest(g["name"], f"bash {spec['kernel_script']}", timeout=3600)
-        host.run(f"lxc restart {g['name']} </dev/null", sudo=True)
-        wait_for(host, g["name"], "restart into the kernel",
-                 f"test \"$(uname -r)\" = {spec['kernel']} && test -f /vagrant/vagrant/02-load-module.sh && "
-                 "ip -4 -o addr show dev wgtest0 | grep -q inet")
+        spec = BEDS[bed]
+        for g in (gw, cl):
+            host = by_target[g["host"]]
+            print(f"{g['name']} on {g['host']}: first boot", flush=True)
+            wait_for(host, g["name"], "first boot",
+                     "cloud-init status --wait >/dev/null 2>&1; test -f /vagrant/vagrant/02-load-module.sh")
+            print(f"{g['name']}: kernel {spec['kernel']}", flush=True)
+            host.guest(g["name"], f"bash {spec['kernel_script']}", timeout=3600)
+            host.run(f"lxc restart {g['name']} </dev/null", sudo=True)
+            wait_for(host, g["name"], "restart into the kernel",
+                     f"test \"$(uname -r)\" = {spec['kernel']} && test -f /vagrant/vagrant/02-load-module.sh && "
+                     "ip -4 -o addr show dev wgtest0 | grep -q inet")
     print(f"test bed {a.name} is up: WGZK_RIG={state_file}")
     return 0
 
