@@ -53,10 +53,16 @@ def main():
 
     head = "| {} | n | median | p25 | p75 | p95 | p99 | max |\n|---|---|---|---|---|---|---|---|"
     print("## Handshake latency (ms): first packet to its reply, minus the steady round trip\n")
-    print("| run | system | trials | succeeded | failed |\n|---|---|---|---|---|")
+    print("| run | system | blocks | trials | succeeded | failed | host load, lowest to highest | threads |\n"
+          "|---|---|---|---|---|---|---|---|")
     for n in names:
         s = runs[n][0]
-        print(f"| {n} | {s['system']} | {s['trials']} | {s['succeeded']} | {s['failed']} |")
+        h = s["host_load"]
+        commits = sorted({b["commit"][:7] + ("+" if b["dirty_files"] else "") for b in s["blocks"]})
+        print(f"| {n} | {s['system']} | {len(s['blocks'])} | {s['trials']} | {s['succeeded']} | "
+              f"{s['failed']} | {h['min']} to {h['max']} | {h['threads']} |")
+        if len(commits) != 1:
+            sys.exit(f"{n}: blocks of different commits: {commits}")
     print("\n" + head.format("run"))
     for n in names:
         s, trials = runs[n]
@@ -94,11 +100,16 @@ def main():
                        for t in one]))
 
     print("\n## CPU time per handshake (ms)\n")
-    print("| run | machine | daemon | whole machine, idle subtracted | window (s) |\n|---|---|---|---|---|")
+    print("Daemon: on-CPU time of its threads. All tasks: on-CPU time of every task of the machine,\n"
+          "idle window subtracted; it contains the driver of the trials. Interrupts: tick counts of\n"
+          "10 ms, idle window subtracted.\n")
+    print("| run | machine | handshakes | daemon | all tasks | interrupts (ticks) | window (s) |\n"
+          "|---|---|---|---|---|---|---|")
     for n in names:
         for vm, c in sorted(runs[n][0].get("cpu", {}).items()):
-            print(f"| {n} | {vm} | {fmt(c['daemon_ms_per_handshake'], 3)} | "
-                  f"{fmt(c['machine_ms_per_handshake'], 3)} | {c['window_s']} |")
+            print(f"| {n} | {vm} | {c['handshakes']} | {fmt(c.get('daemon_ms_per_handshake'), 3)} | "
+                  f"{fmt(c.get('machine_ms_per_handshake'), 3)} | "
+                  f"{fmt(c.get('interrupt_ticks_ms_per_handshake'), 3)} | {c['window_s']} |")
 
 
 if __name__ == "__main__":

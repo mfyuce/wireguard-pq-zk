@@ -6,6 +6,7 @@ as a preshared key. A trial measures the two parts of a cold start apart:
 
   exchange_ms   from the start of the Rosenpass process to the moment the
                 preshared key is installed in the WireGuard peer of the client
+                (announced_ms: to the moment Rosenpass reports the key)
   first_rtt_ms  the first packet through the tunnel after that, which waits for
                 an ordinary WireGuard handshake with the preshared key in place
 
@@ -29,6 +30,9 @@ CL_ADDR = "fd57:475a:4b00::2"
 TUNNEL_NET = "fd57:475a:4b00::/64"
 SECRET = "/etc/rosenpass/client.secret"
 PUBLIC = "/vagrant/vagrant/keys/rosenpass"
+# With an output file Rosenpass reports every key on standard output, which
+# lets the trial wait for the key without polling.
+KEYFILE = "/run/rosenpass-trial.key"
 
 
 def sh(cmd):
@@ -72,6 +76,7 @@ def main():
                 "secret-key", f"{SECRET}/pqsk", "public-key", f"{SECRET}/pqpk",
                 "peer", "public-key", f"{PUBLIC}/gateway.public/pqpk",
                 "endpoint", f"{a.gateway}:{a.port}",
+                "outfile", KEYFILE,
                 "wireguard", DEV, gw_wgpk,
                 "endpoint", f"{a.gateway}:{a.port + 1}", "allowed-ips", TUNNEL_NET]
 
@@ -89,14 +94,19 @@ def main():
         announced = installed = None
         deadline = time.monotonic() + a.timeout
         buf = b""
-        while installed is None and time.monotonic() < deadline:
-            if announced is None:
-                if select.select([p.stdout], [], [], 0.001)[0]:
-                    buf += p.stdout.read() or b""
-                    if b"exchanged" in buf:
-                        announced = time.monotonic_ns()
+        while announced is None and time.monotonic() < deadline:
+            if select.select([p.stdout], [], [], deadline - time.monotonic())[0]:
+                chunk = p.stdout.read()
+                if chunk == b"":
+                    break  # the process ended
+                buf += chunk or b""
+                if b"exchanged" in buf:
+                    announced = time.monotonic_ns()
+        while announced is not None and installed is None and time.monotonic() < deadline:
             if psk_installed(gw_wgpk):
                 installed = time.monotonic_ns()
+            else:
+                time.sleep(0.0005)
         first, steady = None, []
         if installed is not None:
             time.sleep(a.pause)
@@ -118,6 +128,7 @@ def main():
         time.sleep(a.gap)
     sh("pkill -x rosenpass")
     sh(f"ip link del {DEV}")
+    sh(f"rm -f {KEYFILE}")
 
 
 if __name__ == "__main__":

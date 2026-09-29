@@ -28,10 +28,13 @@ See bench/guest/rosenpass_trials.py.
 CPU time (measurement M-2) is taken over the same trials, in two ways.
 Daemon: the time that the threads of the daemon spent on a CPU, from
 /proc/<pid>/task/*/schedstat, divided by the number of successful handshakes;
-precise, and defined for this design only. Machine: the busy time of the whole
-machine from /proc/stat over the trials, minus the busy time of an idle window
-scaled to the same length; an upper bound, since it contains the driver of the
-trials, and the same procedure for every system and for both machines.
+precise, and defined for this design only. Machine: the time that all tasks of
+the machine, kernel threads included, spent on a CPU over the trials
+(/proc/schedstat), minus that of an idle window scaled to the same length; an
+upper bound, since it contains the driver of the trials, and the same
+procedure for every system and for both machines. Interrupt work that runs
+while the CPU is otherwise idle is not in it; /proc/stat counts it, in ticks
+of 10 ms, and is recorded next to it.
 
 Output directory: trials.jsonl (one record per trial; for wgzk with the timing
 lines of both daemons), summary.json, setup.log.
@@ -69,7 +72,7 @@ class Rig:
             sys.exit("vagrant ssh-config failed; are both machines up?\n" + cfg.stderr)
         with open(self.sshcfg, "w") as f:
             f.write(cfg.stdout + "\nHost *\n  LogLevel ERROR\n")
-        self.log = open(os.path.join(outdir, "setup.log"), "w")
+        self.log = open(os.path.join(outdir, "setup.log"), "a")
 
     def ssh(self, vm, script):
         return ["ssh", "-F", self.sshcfg, vm, "sudo bash -c " + shlex.quote(script)]
@@ -109,8 +112,9 @@ DAEMONS = {"wgzk": "wg-zk-daemon", "wgzk-rekey": "wg-zk-daemon", "rosenpass": "r
 
 
 def cpu_snapshot(rig, vm, process):
-    """Busy time of the machine and on-CPU time of `process`, both in seconds."""
-    script = "head -1 /proc/stat; getconf CLK_TCK; date +%s.%N"
+    """On-CPU time of all tasks, of `process`, and the tick counts, all in seconds."""
+    script = ("head -1 /proc/stat; getconf CLK_TCK; date +%s.%N; "
+              "awk '/^cpu/ {s += $8} END {print s}' /proc/schedstat")
     if process:
         script += (f"; for p in $(pidof {process}); do for f in /proc/$p/task/*/schedstat; "
                    "do cat $f; done; done 2>/dev/null")
@@ -118,23 +122,38 @@ def cpu_snapshot(rig, vm, process):
     f = [int(x) for x in lines[0].split()[1:]]
     hz = int(lines[1])
     # user nice system idle iowait irq softirq steal
-    busy = (f[0] + f[1] + f[2] + f[5] + f[6] + f[7]) / hz
-    daemon = sum(int(ln.split()[0]) for ln in lines[3:] if ln.split()) / 1e9 if process else None
-    return {"busy_s": busy, "daemon_s": daemon, "clock_s": float(lines[2])}
+    ticks = (f[0] + f[1] + f[2] + f[5] + f[6] + f[7]) / hz
+    daemon = sum(int(ln.split()[0]) for ln in lines[4:] if ln.split()) / 1e9 if process else None
+    return {"busy_s": int(lines[3]) / 1e9, "ticks_s": ticks, "irq_ticks_s": (f[5] + f[6]) / hz,
+            "daemon_s": daemon, "clock_s": float(lines[2])}
 
 
-def cpu_report(idle0, idle1, run0, run1, handshakes):
-    """CPU time per handshake of one machine, in ms."""
-    idle_rate = (idle1["busy_s"] - idle0["busy_s"]) / (idle1["clock_s"] - idle0["clock_s"])
-    seconds = run1["clock_s"] - run0["clock_s"]
-    busy = run1["busy_s"] - run0["busy_s"]
-    out = {"window_s": round(seconds, 1), "busy_s": round(busy, 3),
-           "idle_busy_per_s": round(idle_rate, 5),
-           "machine_ms_per_handshake": None, "daemon_ms_per_handshake": None}
-    if handshakes:
-        out["machine_ms_per_handshake"] = (busy - idle_rate * seconds) * 1000 / handshakes
-        if run0["daemon_s"] is not None and run1["daemon_s"] is not None:
-            out["daemon_ms_per_handshake"] = (run1["daemon_s"] - run0["daemon_s"]) * 1000 / handshakes
+def cpu_block(idle0, idle1, run0, run1):
+    """What one block of trials used, and what the idle window before it used per second."""
+    idle_seconds = idle1["clock_s"] - idle0["clock_s"]
+    out = {"window_s": run1["clock_s"] - run0["clock_s"], "used": {}, "idle_per_s": {}}
+    for key in ("busy_s", "ticks_s", "irq_ticks_s", "daemon_s"):
+        if run0[key] is None or run1[key] is None:
+            continue
+        out["used"][key] = run1[key] - run0[key]
+        out["idle_per_s"][key] = (idle1[key] - idle0[key]) / idle_seconds
+    return out
+
+
+def cpu_report(blocks, vm):
+    """CPU time per handshake of one machine over all blocks, in ms."""
+    handshakes = sum(b["succeeded"] for b in blocks)
+    out = {"window_s": round(sum(b["cpu"][vm]["window_s"] for b in blocks), 1), "handshakes": handshakes}
+    names = {"busy_s": "machine", "ticks_s": "machine_ticks", "irq_ticks_s": "interrupt_ticks",
+             "daemon_s": "daemon"}
+    for key, name in names.items():
+        if not handshakes or any(key not in b["cpu"][vm]["used"] for b in blocks):
+            out[name + "_ms_per_handshake"] = None
+            continue
+        used = sum(b["cpu"][vm]["used"][key] for b in blocks)
+        idle = sum(b["cpu"][vm]["idle_per_s"][key] * b["cpu"][vm]["window_s"] for b in blocks)
+        out[name + "_ms_per_handshake"] = (used - idle) * 1000 / handshakes
+        out[name + "_idle_share"] = idle / used if used else None
     return out
 
 
@@ -199,10 +218,24 @@ def main():
     ap.add_argument("--gap", type=float, default=0.3)
     ap.add_argument("--idle", type=float, default=30, help="seconds of the idle window for the CPU time")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--append", action="store_true",
+                    help="add the trials as a further block to those that the directory holds")
     a = ap.parse_args()
 
     spec = SYSTEMS[a.system]
     os.makedirs(a.out, exist_ok=True)
+    trials_file = os.path.join(a.out, "trials.jsonl")
+    summary_file = os.path.join(a.out, "summary.json")
+    earlier, blocks = [], []
+    if os.path.exists(trials_file):
+        if not a.append:
+            sys.exit(f"{a.out} holds trials already; use --append or another directory")
+        earlier = [json.loads(line) for line in open(trials_file)]
+        blocks = json.load(open(summary_file))["blocks"]
+        if json.load(open(summary_file))["system"] != a.system:
+            sys.exit(f"{a.out} holds trials of another system")
+    # Other work on the host delays the machines. The load is recorded with every run.
+    load_before = open("/proc/loadavg").read().split()[:3]
     rig = Rig(a.out)
     facts = setup(rig, a.system, spec)
     gw_pub = open(os.path.join(ROOT, "vagrant/keys/public_right")).read().strip()
@@ -263,7 +296,28 @@ def main():
         t["steady_median_ms"] = statistics.median(steady) if steady else None
         t["handshake_ms"] = (t["first_rtt_ms"] - t["steady_median_ms"]
                              if t["ok"] and steady else None)
-    with open(os.path.join(a.out, "trials.jsonl"), "w") as f:
+    block = {
+        "block": len(blocks) + 1,
+        "started": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(started)),
+        "seconds": round(time.time() - started, 1),
+        "trials": len(trials),
+        "succeeded": sum(t["handshake_ms"] is not None for t in trials),
+        "machines": facts,
+        "host": {"threads": os.cpu_count(),
+                 "loadavg_before": [float(x) for x in load_before],
+                 "loadavg_after": [float(x) for x in open("/proc/loadavg").read().split()[:3]]},
+        "cpu": {vm: cpu_block(idle0[vm], idle1[vm], run0[vm], run1[vm]) for vm in process},
+        "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                                 text=True).stdout.strip(),
+        "dirty_files": len(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True,
+                                          text=True).stdout.splitlines()),
+    }
+    for t in trials:
+        t["block"] = block["block"]
+        t["trial"] += len(earlier)
+    blocks.append(block)
+    trials = earlier + trials
+    with open(trials_file, "w") as f:
         for t in trials:
             f.write(json.dumps(t, sort_keys=True) + "\n")
 
@@ -273,17 +327,17 @@ def main():
         "trials": len(trials),
         "succeeded": len(ok),
         "failed": len(trials) - len(ok),
-        "seconds": round(time.time() - started, 1),
+        "blocks": blocks,
         "handshake_ms": describe([t["handshake_ms"] for t in ok]),
         "first_rtt_ms": describe([t["first_rtt_ms"] for t in ok]),
         "steady_rtt_ms": describe([t["steady_median_ms"] for t in ok]),
         "reset_ms": describe([t["reset_us"] / 1000 for t in trials if "reset_us" in t]),
-        "machines": facts,
-        "cpu": {vm: cpu_report(idle0[vm], idle1[vm], run0[vm], run1[vm], len(ok)) for vm in process},
-        "commit": subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
-                                 text=True).stdout.strip(),
-        "dirty_files": len(subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True,
-                                          text=True).stdout.splitlines()),
+        "host_load": {"min": min(min(b["host"]["loadavg_before"][0], b["host"]["loadavg_after"][0])
+                                 for b in blocks),
+                      "max": max(max(b["host"]["loadavg_before"][0], b["host"]["loadavg_after"][0])
+                                 for b in blocks),
+                      "threads": os.cpu_count()},
+        "cpu": {vm: cpu_report(blocks, vm) for vm in process},
     }
     if spec["kind"] == "rosenpass":
         summary["exchange_ms"] = describe([t["exchange_ms"] for t in ok])
@@ -294,7 +348,7 @@ def main():
         for side, keys in (("client", ("zk_us", "encap_us", "tls_us", "write_us", "psk_us", "tail_us", "total_us")),
                            ("gateway", ("wait_ct_us", "verify_us", "decap_us", "peer_us", "total_us"))):
             summary[side + "_ms"] = {k[:-3]: describe([int(t[side][0][k]) / 1000 for t in one]) for k in keys}
-    with open(os.path.join(a.out, "summary.json"), "w") as f:
+    with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2, sort_keys=True)
         f.write("\n")
     rig.log.close()
@@ -305,7 +359,9 @@ def main():
           f"{h.get('median', float('nan')):.2f} ms, quartiles {h.get('p25', float('nan')):.2f} to "
           f"{h.get('p75', float('nan')):.2f}, p95 {h.get('p95', float('nan')):.2f}, "
           f"p99 {h.get('p99', float('nan')):.2f}; steady round trip median "
-          f"{summary['steady_rtt_ms'].get('median', float('nan')):.2f} ms")
+          f"{summary['steady_rtt_ms'].get('median', float('nan')):.2f} ms; {len(blocks)} block(s); "
+          f"host load {summary['host_load']['min']} to {summary['host_load']['max']} on "
+          f"{summary['host_load']['threads']} threads")
 
 
 if __name__ == "__main__":
