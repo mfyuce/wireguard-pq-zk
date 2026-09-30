@@ -26,3 +26,9 @@ vagrant/artifacts/
 vagrant/build-base/.vagrant/
 *-cloudimg-console.log
 bench/rigs/
+
+# Work-log files: kept locally, never in the public history (D-10). Backed up to
+# https://github.com/mfyuce/wireguard-pq-zk-prv and https://gitlab.com/mfyuce/wireguard-pq-zk-prv
+CLAUDE.md
+TODO.md
+DONE.md
