@@ -1,0 +1,149 @@
+
+$ [gateway] rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [client] GW_IP=192.168.100.1 PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq WGZK_M7_N=2 bash /vagrant/vagrant/03-client-m7.sh
+bash: /vagrant/vagrant/03-client-m7.sh: No such file or directory
+Error: Command not found
+[exit 127]
+
+$ [gateway] rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [client] GW_IP=192.168.100.1 PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq WGZK_M7_N=2 bash /vagrant/vagrant/03-client-m7.sh
+bash: /vagrant/vagrant/03-client-m7.sh: No such file or directory
+Error: Command not found
+[exit 127]
+
+$ [gateway] rm -rf /etc/systemd/system/wgzk.service.d /etc/wgzk-test.env; bash /vagrant/vagrant/02-load-module.sh && WGZK_VARIANT=zk-pq bash /vagrant/vagrant/03-gateway.sh
+==> Kernel: 6.8.0-59-generic
+==> insmod OK
+==> lsmod:
+wireguard             135168  0
+curve25519_x86_64      36864  1 wireguard
+libcurve25519_generic    45056  2 curve25519_x86_64,wireguard
+ip6_udp_tunnel         16384  1 wireguard
+udp_tunnel             32768  1 wireguard
+libchacha20poly1305    20480  1 wireguard
+==> wireguard.ko loaded OK — wgzk genl registered
+active
+==> wgzk daemon running (gateway, zk-pq, epoch 1)
+interface: wg1r
+  public key: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  private key: (hidden)
+  listening port: 51921
+[exit 0]
+
+$ [client] GW_IP=192.168.100.1 PEER_IP=192.168.100.1 WGZK_VARIANT=zk-pq WGZK_M7_N=2 bash /vagrant/vagrant/03-client-m7.sh
+public_key=VzgzmiE49ISPr4IPObdSdmLDFiTA/Cv7sgB0JIwN4G8=
+address=fd57:475a:4b00:0:ff34:74d8:a29b:50df
+public_key=jLux+3Vtjz9kdzoPJCQrK9848vXMitPm96QABET0hBk=
+address=fd57:475a:4b00:0:cbf8:8099:76c3:46b2
+==> 2 wgzk-m7 daemons running (zk-pq, epoch 1)
+interface: wgc0
+  public key: VzgzmiE49ISPr4IPObdSdmLDFiTA/Cv7sgB0JIwN4G8=
+  private key: (hidden)
+  listening port: 39743
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+interface: wgc1
+  public key: jLux+3Vtjz9kdzoPJCQrK9848vXMitPm96QABET0hBk=
+  private key: (hidden)
+  listening port: 51798
+
+peer: /04haUify5NyBHxcAlPNMZYDW7ZeFUCWRvTnHZkKQmE=
+  endpoint: 192.168.100.1:51921
+  allowed ips: fd57:475a:4b00::/64
+The unit files have no installation config (WantedBy=, RequiredBy=, Also=,
+Alias= settings in the [Install] section, and DefaultInstance= for template
+units). This means they are not meant to be enabled using systemctl.
+ 
+Possible reasons for having this kind of units are:
+• A unit may be statically enabled by being symlinked from another unit's
+  .wants/ or .requires/ directory.
+• A unit's purpose may be to act as a helper for some other unit which has
+  a requirement dependency on it.
+• A unit may be started when needed via activation (socket, path, timer,
+  D-Bus, udev, scripted systemctl call, ...).
+• In case of template units, the unit is meant to be enabled with some
+  instance name specified.
+The unit files have no installation config (WantedBy=, RequiredBy=, Also=,
+Alias= settings in the [Install] section, and DefaultInstance= for template
+units). This means they are not meant to be enabled using systemctl.
+ 
+Possible reasons for having this kind of units are:
+• A unit may be statically enabled by being symlinked from another unit's
+  .wants/ or .requires/ directory.
+• A unit's purpose may be to act as a helper for some other unit which has
+  a requirement dependency on it.
+• A unit may be started when needed via activation (socket, path, timer,
+  D-Bus, udev, scripted systemctl call, ...).
+• In case of template units, the unit is meant to be enabled with some
+  instance name specified.
+[exit 0]
+
+$ [client] ping -n -c 3 -W 2 192.168.100.1 >/dev/null; ping -6 -n -c 3 -W 5 fd57:475a:4b00::1 -I wgc0 >/dev/null || true
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=e6a325d7aab144b09b565d8c4be4d789;i=6700;b=803d77ddc49e4e5ea7391884acfbd14f;m=f04cf76f8;t=65cb1002249fa;x=13b2cef938f5670f
+[exit 0]
+
+$ [client] journalctl -u wgzk-m7@wgc0.service -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=a04ba51497c94fceb15b4fa2d2c14874;i=360d;b=5708c4198e784f8da063614019aef0c3;m=efde09942;t=65cb100224216;x=41ff51550d59ba04
+[exit 0]
+
+$ [client] journalctl -u wgzk-m7@wgc1.service -n 1 --show-cursor -o cat --no-pager | tail -1
+-- cursor: s=a04ba51497c94fceb15b4fa2d2c14874;i=360c;b=5708c4198e784f8da063614019aef0c3;m=efde08b6d;t=65cb10022343c;x=ebc3bc9c5caaf1d0
+[exit 0]
+
+$ [gateway] journalctl -u wgzk -o json --no-pager --after-cursor='s=e6a325d7aab144b09b565d8c4be4d789;i=6700;b=803d77ddc49e4e5ea7391884acfbd14f;m=f04cf76f8;t=65cb1002249fa;x=13b2cef938f5670f' | grep -F '[timing]' || true
+{"_SYSTEMD_SLICE":"system.slice","_SYSTEMD_INVOCATION_ID":"a77cbcfd55e64b3da0fbb64a3aa933bf","SYSLOG_IDENTIFIER":"wgzk-start.sh","_EXE":"/usr/local/bin/wg-zk-daemon","_PID":"23716","MESSAGE":"[timing] side=gateway pending_id=2 token=2288483339 nonce_prefix=43fa805a result=ok wait_ct_us=2 verify_us=97 decap_us=92 peer_us=88 total_us=301","_BOOT_ID":"803d77ddc49e4e5ea7391884acfbd14f","_SYSTEMD_UNIT":"wgzk.service","__MONOTONIC_TIMESTAMP":"64509642799","__CURSOR":"s=e6a325d7aab144b09b565d8c4be4d789;i=6703;b=803d77ddc49e4e5ea7391884acfbd14f;m=f0513082f;t=65cb10065db31;x=e4aae3dcb8b20d2e","_STREAM_ID":"ba284fc247504416bf56cfd3c46515fe","_COMM":"wg-zk-daemon","_UID":"0","_SELINUX_CONTEXT":"unconfined\n","_SYSTEMD_CGROUP":"/system.slice/wgzk.service","_TRANSPORT":"stdout","_MACHINE_ID":"690ce7d60d764639b5ea18bbb8cfa3c2","__REALTIME_TIMESTAMP":"1790765145905969","PRIORITY":"6","SYSLOG_FACILITY":"3","_GID":"0","_CAP_EFFECTIVE":"1ffffffffff","_HOSTNAME":"wgzk-gateway","_CMDLINE":"/usr/local/bin/wg-zk-daemon"}
+{"__REALTIME_TIMESTAMP":"1790765145908093","_CAP_EFFECTIVE":"1ffffffffff","_STREAM_ID":"ba284fc247504416bf56cfd3c46515fe","_BOOT_ID":"803d77ddc49e4e5ea7391884acfbd14f","_MACHINE_ID":"690ce7d60d764639b5ea18bbb8cfa3c2","_COMM":"wg-zk-daemon","__MONOTONIC_TIMESTAMP":"64509644923","_HOSTNAME":"wgzk-gateway","_SYSTEMD_UNIT":"wgzk.service","SYSLOG_IDENTIFIER":"wgzk-start.sh","__CURSOR":"s=e6a325d7aab144b09b565d8c4be4d789;i=6704;b=803d77ddc49e4e5ea7391884acfbd14f;m=f0513107b;t=65cb10065e37d;x=b3edd60a8bd355a6","_UID":"0","SYSLOG_FACILITY":"3","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_PID":"23716","_SYSTEMD_INVOCATION_ID":"a77cbcfd55e64b3da0fbb64a3aa933bf","MESSAGE":"[timing] side=gateway pending_id=3 token=514052355 nonce_prefix=a0a7172f result=ok wait_ct_us=1 verify_us=324 decap_us=101 peer_us=61 total_us=504","_TRANSPORT":"stdout","PRIORITY":"6","_EXE":"/usr/local/bin/wg-zk-daemon","_SYSTEMD_CGROUP":"/system.slice/wgzk.service","_SYSTEMD_SLICE":"system.slice","_GID":"0","_SELINUX_CONTEXT":"unconfined\n"}
+{"_SYSTEMD_UNIT":"wgzk.service","_COMM":"wg-zk-daemon","_STREAM_ID":"ba284fc247504416bf56cfd3c46515fe","_MACHINE_ID":"690ce7d60d764639b5ea18bbb8cfa3c2","_CAP_EFFECTIVE":"1ffffffffff","__MONOTONIC_TIMESTAMP":"64510821145","_UID":"0","__REALTIME_TIMESTAMP":"1790765147084315","SYSLOG_FACILITY":"3","SYSLOG_IDENTIFIER":"wgzk-start.sh","_BOOT_ID":"803d77ddc49e4e5ea7391884acfbd14f","_PID":"23716","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_SYSTEMD_SLICE":"system.slice","_HOSTNAME":"wgzk-gateway","_SYSTEMD_INVOCATION_ID":"a77cbcfd55e64b3da0fbb64a3aa933bf","MESSAGE":"[timing] side=gateway pending_id=4 token=380744928 nonce_prefix=70f9e8d0 result=ok wait_ct_us=4 verify_us=96 decap_us=133 peer_us=95 total_us=421","_SYSTEMD_CGROUP":"/system.slice/wgzk.service","_GID":"0","_SELINUX_CONTEXT":"unconfined\n","_TRANSPORT":"stdout","_EXE":"/usr/local/bin/wg-zk-daemon","__CURSOR":"s=e6a325d7aab144b09b565d8c4be4d789;i=6707;b=803d77ddc49e4e5ea7391884acfbd14f;m=f05250319;t=65cb10077d61b;x=8613d877de513244","PRIORITY":"6"}
+{"MESSAGE":"[timing] side=gateway pending_id=5 token=1693706771 nonce_prefix=5b2d3211 result=ok wait_ct_us=1 verify_us=95 decap_us=83 peer_us=71 total_us=882","__MONOTONIC_TIMESTAMP":"64510821145","_SYSTEMD_UNIT":"wgzk.service","_UID":"0","_PID":"23716","_GID":"0","_CAP_EFFECTIVE":"1ffffffffff","PRIORITY":"6","SYSLOG_FACILITY":"3","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_STREAM_ID":"ba284fc247504416bf56cfd3c46515fe","_MACHINE_ID":"690ce7d60d764639b5ea18bbb8cfa3c2","_HOSTNAME":"wgzk-gateway","__REALTIME_TIMESTAMP":"1790765147084315","_SELINUX_CONTEXT":"unconfined\n","_EXE":"/usr/local/bin/wg-zk-daemon","_SYSTEMD_INVOCATION_ID":"a77cbcfd55e64b3da0fbb64a3aa933bf","_SYSTEMD_SLICE":"system.slice","_TRANSPORT":"stdout","__CURSOR":"s=e6a325d7aab144b09b565d8c4be4d789;i=6708;b=803d77ddc49e4e5ea7391884acfbd14f;m=f05250319;t=65cb10077d61b;x=5e4091c9fa2e11f1","SYSLOG_IDENTIFIER":"wgzk-start.sh","_SYSTEMD_CGROUP":"/system.slice/wgzk.service","_COMM":"wg-zk-daemon","_BOOT_ID":"803d77ddc49e4e5ea7391884acfbd14f"}
+[exit 0]
+
+$ [client] journalctl -u wgzk-m7@wgc0.service -o json --no-pager --after-cursor='s=a04ba51497c94fceb15b4fa2d2c14874;i=360d;b=5708c4198e784f8da063614019aef0c3;m=efde09942;t=65cb100224216;x=41ff51550d59ba04' | grep -F '[timing]' || true
+{"__CURSOR":"s=a04ba51497c94fceb15b4fa2d2c14874;i=3610;b=5708c4198e784f8da063614019aef0c3;m=efe242df5;t=65cb10065d6c9;x=99efb2a1b240e169","_EXE":"/usr/local/bin/wg-zk-daemon","_MACHINE_ID":"6334201a93644f82a11c836f3c84a03f","_SYSTEMD_UNIT":"wgzk-m7@wgc0.service","_SELINUX_CONTEXT":"unconfined\n","_PID":"96799","MESSAGE":"[timing] side=client token=2288483339 nonce_prefix=43fa805a result=ok zk_us=48 encap_us=75 tls_us=3053 write_us=41 psk_us=32 tail_us=1 total_us=3352","__REALTIME_TIMESTAMP":"1790765145904841","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_BOOT_ID":"5708c4198e784f8da063614019aef0c3","_CAP_EFFECTIVE":"1ffffffffff","_TRANSPORT":"stdout","_HOSTNAME":"wgzk-client","_COMM":"wg-zk-daemon","_SYSTEMD_SLICE":"system-wgzk\\x2dm7.slice","_UID":"0","_STREAM_ID":"927ca963143a4baebd343ce658492bfc","SYSLOG_IDENTIFIER":"env","SYSLOG_FACILITY":"3","PRIORITY":"6","__MONOTONIC_TIMESTAMP":"64393326069","_SYSTEMD_CGROUP":"/system.slice/system-wgzk\\x2dm7.slice/wgzk-m7@wgc0.service","_SYSTEMD_INVOCATION_ID":"c9341777492c45e1bc9975b5f5f38832","_GID":"0"}
+{"_EXE":"/usr/local/bin/wg-zk-daemon","SYSLOG_FACILITY":"3","_HOSTNAME":"wgzk-client","__MONOTONIC_TIMESTAMP":"64394503412","_PID":"96799","_SYSTEMD_UNIT":"wgzk-m7@wgc0.service","_SYSTEMD_SLICE":"system-wgzk\\x2dm7.slice","__CURSOR":"s=a04ba51497c94fceb15b4fa2d2c14874;i=3614;b=5708c4198e784f8da063614019aef0c3;m=efe3624f4;t=65cb10077cdc7;x=534fb75139537dd7","_SYSTEMD_CGROUP":"/system.slice/system-wgzk\\x2dm7.slice/wgzk-m7@wgc0.service","_TRANSPORT":"stdout","_STREAM_ID":"927ca963143a4baebd343ce658492bfc","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_MACHINE_ID":"6334201a93644f82a11c836f3c84a03f","PRIORITY":"6","_UID":"0","_SYSTEMD_INVOCATION_ID":"c9341777492c45e1bc9975b5f5f38832","SYSLOG_IDENTIFIER":"env","_SELINUX_CONTEXT":"unconfined\n","MESSAGE":"[timing] side=client token=380744928 nonce_prefix=70f9e8d0 result=ok zk_us=139 encap_us=99 tls_us=1670 write_us=8 psk_us=27 tail_us=1 total_us=2107","_BOOT_ID":"5708c4198e784f8da063614019aef0c3","_CAP_EFFECTIVE":"1ffffffffff","_COMM":"wg-zk-daemon","__REALTIME_TIMESTAMP":"1790765147082183","_GID":"0"}
+[exit 0]
+
+$ [client] journalctl -u wgzk-m7@wgc1.service -o json --no-pager --after-cursor='s=a04ba51497c94fceb15b4fa2d2c14874;i=360c;b=5708c4198e784f8da063614019aef0c3;m=efde08b6d;t=65cb10022343c;x=ebc3bc9c5caaf1d0' | grep -F '[timing]' || true
+{"_SYSTEMD_UNIT":"wgzk-m7@wgc1.service","_SELINUX_CONTEXT":"unconfined\n","_SYSTEMD_INVOCATION_ID":"379af22d12ad42f1872a44bc59e1d5d4","PRIORITY":"6","_CMDLINE":"/usr/local/bin/wg-zk-daemon","_PID":"96847","SYSLOG_IDENTIFIER":"env","_SYSTEMD_SLICE":"system-wgzk\\x2dm7.slice","_COMM":"wg-zk-daemon","_BOOT_ID":"5708c4198e784f8da063614019aef0c3","__CURSOR":"s=a04ba51497c94fceb15b4fa2d2c14874;i=3611;b=5708c4198e784f8da063614019aef0c3;m=efe242f29;t=65cb10065d7fd;x=1028d33aab9f7d3e","_UID":"0","MESSAGE":"[timing] side=client token=514052355 nonce_prefix=a0a7172f result=ok zk_us=178 encap_us=129 tls_us=1728 write_us=39 psk_us=501 tail_us=8 total_us=2726","_TRANSPORT":"stdout","_GID":"0","_SYSTEMD_CGROUP":"/system.slice/system-wgzk\\x2dm7.slice/wgzk-m7@wgc1.service","__REALTIME_TIMESTAMP":"1790765145905149","_MACHINE_ID":"6334201a93644f82a11c836f3c84a03f","SYSLOG_FACILITY":"3","_CAP_EFFECTIVE":"1ffffffffff","_EXE":"/usr/local/bin/wg-zk-daemon","__MONOTONIC_TIMESTAMP":"64393326377","_HOSTNAME":"wgzk-client","_STREAM_ID":"ef17287251c34f1588128c1f5361253f"}
+{"_CMDLINE":"/usr/local/bin/wg-zk-daemon","_MACHINE_ID":"6334201a93644f82a11c836f3c84a03f","_PID":"96847","_UID":"0","_STREAM_ID":"ef17287251c34f1588128c1f5361253f","SYSLOG_FACILITY":"3","_TRANSPORT":"stdout","_SYSTEMD_SLICE":"system-wgzk\\x2dm7.slice","_SYSTEMD_UNIT":"wgzk-m7@wgc1.service","_BOOT_ID":"5708c4198e784f8da063614019aef0c3","_HOSTNAME":"wgzk-client","__MONOTONIC_TIMESTAMP":"64394503978","_SYSTEMD_CGROUP":"/system.slice/system-wgzk\\x2dm7.slice/wgzk-m7@wgc1.service","PRIORITY":"6","_EXE":"/usr/local/bin/wg-zk-daemon","MESSAGE":"[timing] side=client token=1693706771 nonce_prefix=5b2d3211 result=ok zk_us=47 encap_us=75 tls_us=2971 write_us=40 psk_us=24 tail_us=1 total_us=3338","__CURSOR":"s=a04ba51497c94fceb15b4fa2d2c14874;i=3615;b=5708c4198e784f8da063614019aef0c3;m=efe36272a;t=65cb10077cffe;x=5a969061f6b827dd","__REALTIME_TIMESTAMP":"1790765147082750","_CAP_EFFECTIVE":"1ffffffffff","SYSLOG_IDENTIFIER":"env","_GID":"0","_SELINUX_CONTEXT":"unconfined\n","_COMM":"wg-zk-daemon","_SYSTEMD_INVOCATION_ID":"379af22d12ad42f1872a44bc59e1d5d4"}
+[exit 0]

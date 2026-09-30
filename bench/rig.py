@@ -40,9 +40,9 @@ VAGRANT = {
 
 # What the machines need under /vagrant, relative to the repository root.
 SHARE = ["vagrant/01-install-kernel.sh", "vagrant/02-load-module.sh", "vagrant/03-gateway.sh",
-         "vagrant/03-client.sh", "vagrant/04-test.sh", "vagrant/10-stock.sh", "vagrant/11-rosenpass.sh",
-         "vagrant/pqwireguard/", "vagrant/artifacts/", "vagrant/keys/", "bench/guest/",
-         "bench/acceptance/wgzk_probe.py"]
+         "vagrant/03-client.sh", "vagrant/03-client-m7.sh", "vagrant/04-test.sh", "vagrant/10-stock.sh",
+         "vagrant/11-rosenpass.sh", "vagrant/pqwireguard/", "vagrant/artifacts/", "vagrant/keys/",
+         "bench/guest/", "bench/acceptance/wgzk_probe.py"]
 
 # A script reaches a machine on standard input. It is stored there first and
 # run with an empty standard input, so that no command inside can eat the rest of it.

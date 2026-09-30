@@ -1,0 +1,134 @@
+{
+  "by_n": {
+    "2": {
+      "succeeded": 4,
+      "trials": 4
+    }
+  },
+  "client_ms": {
+    "encap": {
+      "max": 0.129,
+      "mean": 0.0945,
+      "median": 0.087,
+      "min": 0.075,
+      "n": 4
+    },
+    "psk": {
+      "max": 0.501,
+      "mean": 0.146,
+      "median": 0.0295,
+      "min": 0.024,
+      "n": 4
+    },
+    "tail": {
+      "max": 0.008,
+      "mean": 0.00275,
+      "median": 0.001,
+      "min": 0.001,
+      "n": 4
+    },
+    "tls": {
+      "max": 3.053,
+      "mean": 2.3555,
+      "median": 2.3495,
+      "min": 1.67,
+      "n": 4
+    },
+    "total": {
+      "max": 3.352,
+      "mean": 2.88075,
+      "median": 3.032,
+      "min": 2.107,
+      "n": 4
+    },
+    "write": {
+      "max": 0.041,
+      "mean": 0.032,
+      "median": 0.0395,
+      "min": 0.008,
+      "n": 4
+    },
+    "zk": {
+      "max": 0.178,
+      "mean": 0.10300000000000001,
+      "median": 0.0935,
+      "min": 0.047,
+      "n": 4
+    }
+  },
+  "commit": "4d53c7c3bd3c27c9b60029814e6b50c712391b0b",
+  "dirty_files": 6,
+  "failed": 0,
+  "first_rtt_ms": {
+    "max": 6.21,
+    "mean": 5.43,
+    "median": 5.355,
+    "min": 4.8,
+    "n": 4
+  },
+  "gateway_ms": {
+    "decap": {
+      "max": 0.133,
+      "mean": 0.10225000000000001,
+      "median": 0.0965,
+      "min": 0.083,
+      "n": 4
+    },
+    "peer": {
+      "max": 0.095,
+      "mean": 0.07875,
+      "median": 0.07949999999999999,
+      "min": 0.061,
+      "n": 4
+    },
+    "total": {
+      "max": 0.882,
+      "mean": 0.527,
+      "median": 0.4625,
+      "min": 0.301,
+      "n": 4
+    },
+    "verify": {
+      "max": 0.324,
+      "mean": 0.153,
+      "median": 0.0965,
+      "min": 0.095,
+      "n": 4
+    },
+    "wait_ct": {
+      "max": 0.004,
+      "mean": 0.002,
+      "median": 0.0015,
+      "min": 0.001,
+      "n": 4
+    }
+  },
+  "handshake_ms": {
+    "max": 5.252,
+    "mean": 4.5355,
+    "median": 4.5205,
+    "min": 3.8489999999999998,
+    "n": 4
+  },
+  "host_load": {
+    "after": [
+      0.17,
+      0.06,
+      0.01
+    ],
+    "before": [
+      0.02,
+      0.03,
+      0.0
+    ],
+    "threads": 8
+  },
+  "n": 2,
+  "rounds": 2,
+  "seconds": 4.9,
+  "succeeded": 4,
+  "system": "wgzk-m7",
+  "trials": 4,
+  "trials_with_exactly_one_handshake": 4,
+  "variant": "zk-pq"
+}
