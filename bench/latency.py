@@ -37,7 +37,11 @@ the machine, kernel threads included, spent on a CPU over the trials
 upper bound, since it contains the driver of the trials, and the same
 procedure for every system and for both machines. Interrupt work that runs
 while the CPU is otherwise idle is not in it; /proc/stat counts it, in ticks
-of 10 ms, and is recorded next to it.
+of 10 ms, and is recorded next to it. The idle window is sampled --settle
+seconds after setup() returns, not right after it: setup() reloads the module
+or restarts the service, and campaign.py calls it before every block, so
+without the wait its tail was read as background load (r1/evidence.md, N-3,
+2026-09-30).
 
 Output directory: trials.jsonl (one record per trial; for wgzk with the timing
 lines of both daemons), summary.json, setup.log.
@@ -231,6 +235,9 @@ def main():
     ap.add_argument("--steady", type=int, default=5)
     ap.add_argument("--gap", type=float, default=0.3)
     ap.add_argument("--idle", type=float, default=30, help="seconds of the idle window for the CPU time")
+    ap.add_argument("--settle", type=float, default=60,
+                    help="seconds to wait after setup, before the idle window, so that the "
+                    "module reload and the service restart of setup() are not read as load")
     ap.add_argument("--out", required=True)
     ap.add_argument("--append", action="store_true",
                     help="add the trials as a further block to those that the directory holds")
@@ -269,6 +276,7 @@ def main():
     # process whose time can be followed.
     process = {"gateway": DAEMONS.get(spec["kind"]),
                "client": None if spec["kind"] == "rosenpass" else DAEMONS.get(spec["kind"])}
+    time.sleep(a.settle)
     idle0 = {vm: cpu_snapshot(rig, vm, process[vm]) for vm in process}
     time.sleep(a.idle)
     idle1 = {vm: cpu_snapshot(rig, vm, process[vm]) for vm in process}

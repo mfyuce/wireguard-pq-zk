@@ -35,6 +35,7 @@ def main():
     ap.add_argument("--blocks", type=int, default=10)
     ap.add_argument("--trials", type=int, default=100, help="trials per block")
     ap.add_argument("--idle", type=float, default=15)
+    ap.add_argument("--settle", type=float, default=60)
     ap.add_argument("--systems", nargs="+", default=DEFAULT)
     ap.add_argument("--max-load", type=float, default=None,
                     help="do not start a block while the load of the host is above this")
@@ -56,7 +57,7 @@ def main():
                              "not started. Run the same command again to continue.")
             print(f"block {block}/{a.blocks}: {system}", flush=True)
             subprocess.run([sys.executable, os.path.join(ROOT, "bench/latency.py"), system,
-                            "--trials", str(a.trials), "--idle", str(a.idle),
+                            "--trials", str(a.trials), "--idle", str(a.idle), "--settle", str(a.settle),
                             "--out", os.path.join(a.out, system), "--append"], cwd=ROOT, check=True)
     report = subprocess.run([sys.executable, os.path.join(ROOT, "bench/report.py"), a.out],
                             cwd=ROOT, check=True, capture_output=True, text=True).stdout
