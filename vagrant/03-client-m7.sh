@@ -45,14 +45,22 @@ ART="/vagrant/vagrant/artifacts"
 [ -f "$ART/wg-zk-daemon" ] || { echo "ERROR: $ART/wg-zk-daemon not found. Run: bash vagrant/build-artifacts.sh"; exit 1; }
 install -m 755 "$ART/wg-zk-daemon" /usr/local/bin/wg-zk-daemon
 
+# 03-client.sh does this before every single-interface run; this script otherwise assumed
+# the module was already loaded from some earlier run, which a machine restart breaks.
+bash /vagrant/vagrant/02-load-module.sh
+
 # ── stop any previous M-7 run and the single-interface wgzk service, if present ────
+# A template unit's instances (wgzk-m7@wgc0.service, ...) are not files under
+# /etc/systemd/system/ themselves, only the template (wgzk-m7@.service) is; globbing for
+# instance files here found nothing and left an old run's daemons alive, bound to an
+# interface's ifindex that the next block below then deleted and recreated under the same
+# name but a new index, so they never saw an event again. Stop instances by name instead,
+# the same bound used for interfaces just below.
 systemctl stop wgzk 2>/dev/null || true
-for u in /etc/systemd/system/wgzk-m7@*.service; do
-    [ -e "$u" ] || continue
-    inst="$(basename "$u" .service)"
-    systemctl stop "$inst" 2>/dev/null || true
+for k in $(seq 0 255); do
+    systemctl stop "wgzk-m7@wgc$k.service" 2>/dev/null || true
 done
-for k in $(seq 0 31); do
+for k in $(seq 0 255); do
     ip link del "wgc$k" 2>/dev/null || true
     ip -6 rule del table $((100 + k)) 2>/dev/null || true
 done
