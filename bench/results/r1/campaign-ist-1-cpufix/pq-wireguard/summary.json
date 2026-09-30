@@ -1,0 +1,411 @@
+{
+  "blocks": [
+    {
+      "block": 1,
+      "commit": "2bc9e9a70c21225a388b13499e95f1ddd177e307",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.004957073513695896,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.001222848352880463
+          },
+          "used": {
+            "busy_s": 5.754280588999961,
+            "irq_ticks_s": 0.009999999999999953,
+            "ticks_s": 4.909999999999997
+          },
+          "window_s": 120.88931632041931
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.005213525262954822,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0018355936423275008
+          },
+          "used": {
+            "busy_s": 0.49234562399999504,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 0.12000000000000455
+          },
+          "window_s": 121.02839660644531
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.1,
+          0.12,
+          0.09
+        ],
+        "loadavg_before": [
+          0.18,
+          0.17,
+          0.09
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        },
+        "gateway": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        }
+      },
+      "seconds": 120.9,
+      "started": "2026-09-30T07:18:40Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 2,
+      "commit": "2bc9e9a70c21225a388b13499e95f1ddd177e307",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005300487590423693,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.002552616396600821
+          },
+          "used": {
+            "busy_s": 5.595554893999974,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 4.810000000000002
+          },
+          "window_s": 120.40228009223938
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.005352407534123202,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.001910846678196997
+          },
+          "used": {
+            "busy_s": 0.5040894939999703,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 0.12000000000000455
+          },
+          "window_s": 120.35138034820557
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.02,
+          0.05,
+          0.07
+        ],
+        "loadavg_before": [
+          0.08,
+          0.09,
+          0.08
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        },
+        "gateway": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        }
+      },
+      "seconds": 120.4,
+      "started": "2026-09-30T07:32:59Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 3,
+      "commit": "2bc9e9a70c21225a388b13499e95f1ddd177e307",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005016390479741134,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.002445933244769928
+          },
+          "used": {
+            "busy_s": 5.511014842999998,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 4.590000000000003
+          },
+          "window_s": 121.04475927352905
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.004846373126950007,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.001825797766968343
+          },
+          "used": {
+            "busy_s": 0.4698907630000235,
+            "irq_ticks_s": 0.019999999999999907,
+            "ticks_s": 0.14000000000001478
+          },
+          "window_s": 121.0837790966034
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.15,
+          0.14,
+          0.1
+        ],
+        "loadavg_before": [
+          0.1,
+          0.1,
+          0.09
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        },
+        "gateway": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        }
+      },
+      "seconds": 121.0,
+      "started": "2026-09-30T07:47:40Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 4,
+      "commit": "2bc9e9a70c21225a388b13499e95f1ddd177e307",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.005597901025216867,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0031092906119802454
+          },
+          "used": {
+            "busy_s": 5.602711721000048,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 4.799999999999983
+          },
+          "window_s": 120.62152910232544
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.005125444353111367,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.001238067418244528
+          },
+          "used": {
+            "busy_s": 0.47988971699999183,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.09000000000000341
+          },
+          "window_s": 120.64506220817566
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.03,
+          0.08,
+          0.08
+        ],
+        "loadavg_before": [
+          0.17,
+          0.1,
+          0.09
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        },
+        "gateway": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        }
+      },
+      "seconds": 120.6,
+      "started": "2026-09-30T08:02:12Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    },
+    {
+      "block": 5,
+      "commit": "2bc9e9a70c21225a388b13499e95f1ddd177e307",
+      "cpu": {
+        "client": {
+          "idle_per_s": {
+            "busy_s": 0.0054219363196757785,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.002503762647013076
+          },
+          "used": {
+            "busy_s": 5.66182707400003,
+            "irq_ticks_s": 0.010000000000000009,
+            "ticks_s": 4.910000000000025
+          },
+          "window_s": 120.80348944664001
+        },
+        "gateway": {
+          "idle_per_s": {
+            "busy_s": 0.005130934081840099,
+            "irq_ticks_s": 0.0,
+            "ticks_s": 0.0018793559172367979
+          },
+          "used": {
+            "busy_s": 0.49283931499996925,
+            "irq_ticks_s": 0.020000000000000018,
+            "ticks_s": 0.10999999999998522
+          },
+          "window_s": 120.83740997314453
+        }
+      },
+      "dirty_files": 1,
+      "host": {
+        "loadavg_after": [
+          0.27,
+          0.13,
+          0.1
+        ],
+        "loadavg_before": [
+          0.04,
+          0.06,
+          0.08
+        ],
+        "name": "redacted-host",
+        "threads": 8
+      },
+      "machines": {
+        "client": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        },
+        "gateway": {
+          "daemon_sha256": "",
+          "kernel": "4.15.0-91-generic",
+          "module_srcversion": "A0FA22E51AEB9EF6F14C4AF",
+          "module_version": "0.0.20191219-158-gfc6f000-dirty"
+        }
+      },
+      "seconds": 120.8,
+      "started": "2026-09-30T08:16:23Z",
+      "succeeded": 100,
+      "test_bed": "lan-ist",
+      "trials": 100
+    }
+  ],
+  "cpu": {
+    "client": {
+      "daemon_ms_per_handshake": null,
+      "handshakes": 500,
+      "interrupt_ticks_idle_share": 0.0,
+      "interrupt_ticks_ms_per_handshake": 0.09999999999999998,
+      "machine_idle_share": 0.11288277620947039,
+      "machine_ms_per_handshake": 49.90103423009979,
+      "machine_ticks_idle_share": 0.05948160653842798,
+      "machine_ticks_ms_per_handshake": 45.182503621893936,
+      "window_s": 603.8
+    },
+    "gateway": {
+      "daemon_ms_per_handshake": null,
+      "handshakes": 500,
+      "interrupt_ticks_idle_share": 0.0,
+      "interrupt_ticks_ms_per_handshake": 0.15999999999999992,
+      "machine_idle_share": 1.2711233899562595,
+      "machine_ms_per_handshake": -1.3225696726040326,
+      "machine_ticks_idle_share": 1.809775355768867,
+      "machine_ticks_ms_per_handshake": -0.9393394126919059,
+      "window_s": 603.9
+    }
+  },
+  "failed": 0,
+  "first_rtt_ms": {
+    "max": 2.84,
+    "mean": 2.05398,
+    "median": 2.08,
+    "min": 1.33,
+    "n": 500,
+    "p25": 1.92,
+    "p75": 2.2,
+    "p95": 2.35,
+    "p99": 2.5801
+  },
+  "handshake_ms": {
+    "max": 1.7270000000000003,
+    "mean": 1.062038,
+    "median": 1.0835000000000001,
+    "min": 0.31999999999999984,
+    "n": 500,
+    "p25": 0.92075,
+    "p75": 1.20925,
+    "p95": 1.39605,
+    "p99": 1.5401399999999998
+  },
+  "host_load": {
+    "max": 0.27,
+    "min": 0.02,
+    "threads": 8
+  },
+  "reset_ms": {
+    "max": 81.601,
+    "mean": 74.616702,
+    "median": 75.5265,
+    "min": 63.423,
+    "n": 500,
+    "p25": 72.38024999999999,
+    "p75": 77.09299999999999,
+    "p95": 79.24145,
+    "p99": 80.86418
+  },
+  "steady_rtt_ms": {
+    "max": 1.28,
+    "mean": 0.991942,
+    "median": 1.0,
+    "min": 0.762,
+    "n": 500,
+    "p25": 0.94375,
+    "p75": 1.04,
+    "p95": 1.1,
+    "p99": 1.1501
+  },
+  "succeeded": 500,
+  "system": "pq-wireguard",
+  "trials": 500
+}
